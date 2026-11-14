@@ -21,7 +21,7 @@
         person_profiles: 'identified_only'
     });
 </script>
-<title>Urbatik · Votre dossier de mairie prêt en moins d'une semaine</title>
+<title>Urbatik · Déclaration préalable et permis de construire pour artisans</title>
 <link rel="canonical" href="https://urbatik.com/">
 <meta name="description" content="Votre déclaration préalable ou votre permis de construire, prêt à déposer en moins d'une semaine. Pour les artisans : vérandas, pergolas, piscines, solaire.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,8 +38,16 @@ header{display:flex;justify-content:space-between;align-items:center;padding:22p
 .logo span{color:var(--muted);font-weight:500}
 .link{color:var(--muted);text-decoration:none;font-size:15px}
 .link:hover{color:var(--text)}
+.nav{display:flex;gap:18px;align-items:center}
+@media(max-width:520px){.nav .hide-sm{display:none}}
+.works{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.work{border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.work strong{display:block;font-size:16px}
+.work span{color:var(--muted);font-size:14px}
+.more{text-align:center;margin-top:18px;font-size:15px}
+.more a{font-weight:600}
 .hero{text-align:center;padding:72px 0 56px}
-.badge{display:inline-block;font-size:13px;font-weight:500;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 12px;margin-bottom:22px}
+.badge{display:inline-block;font-size:13px;font-weight:500;color:var(--muted);border:1px solid var(--line);border-radius:14px;padding:5px 12px;margin-bottom:22px}
 h1{font-size:clamp(34px,6vw,54px);line-height:1.08;letter-spacing:-.035em;margin:0 0 18px;font-weight:700}
 .sub{font-size:19px;color:var(--muted);max-width:540px;margin:0 auto 34px}
 .btn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;font-size:17px;padding:16px 28px;border-radius:12px;transition:transform .15s}
@@ -96,13 +104,13 @@ footer a{color:var(--muted)}
 <div class="wrap">
   <header>
     <a class="logo" href="/">Urbatik</a>
-    <a class="link" data-link="call" href="#">Parler à un conseiller</a>
+    <nav class="nav"><a class="link" href="/tarifs">Tarifs</a><a class="link hide-sm" data-link="call" href="#">Parler à un conseiller</a></nav>
   </header>
 
   <div class="hero">
-    <div class="badge">Pour vérandalistes, pergolistes, piscinistes et installateurs solaires</div>
-    <h1>Votre dossier de mairie,<br>prêt en moins d'une semaine.</h1>
-    <p class="sub">Déclaration préalable ou permis de construire. Vous répondez à quelques questions, vous ajoutez trois photos, on s'occupe du reste.</p>
+    <div class="badge">Pour les artisans : pergolas, vérandas, abris, piscines, clôtures, solaire</div>
+    <h1>On fait la déclaration préalable ou le permis de vos chantiers.</h1>
+    <p class="sub">Cerfa rempli, plans cotés, photomontage et notice, relus par un professionnel et prêts à déposer en mairie en moins d'une semaine. Vous remplissez en 2 minutes, on gère toute la paperasse.</p>
     <div class="ctas"><a class="btn" data-link="order" href="#">Commencer mon dossier <span aria-hidden="true">→</span></a><a class="btn2" data-link="call" href="#">Parler à un conseiller</a></div>
     <div class="ticks"><span>2 minutes</span><span>Livré en moins d'une semaine</span><span>Remboursé si la mairie refuse</span></div>
   </div>
@@ -117,6 +125,23 @@ footer a{color:var(--muted)}
       <div><strong>Retour mairie inclus</strong><span>Pièce complémentaire demandée : on la prépare sans frais.</span></div>
       <div><strong>Paiement sécurisé</strong><span>Prix fixe annoncé avant de payer, facture avec TVA.</span></div>
     </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Les dossiers qu'on prend en charge</h2>
+    <div class="works">
+      <div class="work"><strong>Pergola, carport</strong><span>Déclaration préalable</span></div>
+      <div class="work"><strong>Véranda, extension</strong><span>Déclaration préalable ou permis selon la surface</span></div>
+      <div class="work"><strong>Abri, studio de jardin</strong><span>Déclaration préalable ou permis selon la surface</span></div>
+      <div class="work"><strong>Piscine</strong><span>Déclaration préalable (10 à 100 m²)</span></div>
+      <div class="work"><strong>Clôture, portail</strong><span>Déclaration préalable si la commune l'exige</span></div>
+      <div class="work"><strong>Panneaux solaires</strong><span>Déclaration préalable</span></div>
+      <div class="work"><strong>Façade, fenêtres, isolation extérieure</strong><span>Déclaration préalable</span></div>
+      <div class="work"><strong>Garage, annexe, surélévation</strong><span>Permis de construire de maison individuelle</span></div>
+    </div>
+    <p class="more">Prix fixe : déclaration préalable 249 € HT, permis 790 € HT. <a href="/tarifs">Voir les tarifs et ce qui est inclus →</a></p>
   </div>
 </section>
 
@@ -185,11 +210,12 @@ footer a{color:var(--muted)}
   <div class="wrap final">
     <h2 style="margin-bottom:22px">Prêt à lancer votre dossier ?</h2>
     <div class="ctas"><a class="btn" data-link="order" href="#">Commencer mon dossier <span aria-hidden="true">→</span></a><a class="btn2" data-link="call" href="#">Parler à un conseiller</a></div>
+    <p><a href="/tarifs">Voir les tarifs</a></p>
   </div>
 </section>
 
 <footer>
-  <div class="wrap">Urbatik · Eliasse Hamour EI · SIRET 937 788 172 00016 · 26 rue de la Coopération, 93240 Stains · <a href="mailto:support@linkfinderai.com">support@linkfinderai.com</a><br><a href="/mentions-legales">Mentions légales</a> · <a href="/cgv">CGV</a> · <a href="/confidentialite">Confidentialité</a></div>
+  <div class="wrap">Urbatik · Eliasse Hamour EI · SIRET 937 788 172 00016 · 26 rue de la Coopération, 93240 Stains · <a href="mailto:support@linkfinderai.com">support@linkfinderai.com</a><br><a href="/tarifs">Tarifs</a> · <a href="/mentions-legales">Mentions légales</a> · <a href="/cgv">CGV</a> · <a href="/confidentialite">Confidentialité</a></div>
 </footer>
 
 <script>
