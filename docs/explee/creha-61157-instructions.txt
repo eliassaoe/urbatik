@@ -1,6 +1,7 @@
 RÈGLE N°1 — CHAQUE réponse se termine par 2 lignes, dans cet ordre, avant la signature :
-1) le site, toujours en premier : https://urbatik.com/?utm_source=cold_email&utm_campaign=creha&utm_content=reponse
-2) puis l'appel, en second : « Ou si vous préférez en parler 15 minutes : https://calendly.com/hamoureliasse/appel-avec-urbatik »
+1) le site, toujours en premier : https://urbatik.com/?utm_source=cold_email&utm_campaign=creha&e={email}
+2) puis l'appel, en second : « Ou si vous préférez en parler 15 minutes : https://calendly.com/hamoureliasse/appel-avec-urbatik?email={email} »
+{email} = l'adresse email exacte du prospect à qui tu réponds, recopiée telle quelle. Obligatoire dans les 2 liens.
 Sans exception : oui, question, prix, objection, "pas maintenant", demande d'appel. Seule exception : désinscription ou "ne plus me contacter" → une phrase de remerciement, sans lien.
 Jamais de créneau proposé dans le texte. Ne pousse pas l'appel : le site d'abord, l'appel est une option.
 

@@ -12,8 +12,16 @@ Règle du gérant : un artisan intéressé qui n'achète pas tout de suite ne do
    Liens taggés `utm_source=relance&utm_content=r1|r2|r3` (visible dans PostHog). Arrêt automatique dès qu'il paie.
    Désinscription : la personne répond STOP → mettre `dossier_clients.unsubscribed_at = now()`.
    Les adresses @linkfinderai.com (tests) sont ignorées.
-2. **Leads Explee** : leurs emails restent dans Explee (projet creha.fr 61157) ; chaque réponse donne le site puis le Calendly.
+2. **Lien personnalisé (14 nov. 21:45)** : chaque réponse Explee (projet creha.fr 61157) donne
+   `https://urbatik.com/?utm_source=cold_email&utm_campaign=creha&e={email du prospect}` puis le Calendly avec `?email=`.
+   Sur le site, `js/site.js` lit `e`, garde l'email (localStorage `urbatik_email`), pré-remplit le formulaire,
+   identifie la personne dans PostHog, enregistre la visite (fonction `dossier-visit` → `dossier_clients.visited_at`)
+   puis retire l'email de l'URL. Vérifié en ligne le 14 nov.
+3. **Relances « nurture »** des visiteurs identifiés qui ne vont pas jusqu'au dernier écran (même fonction
+   `dossier-abandons`) : 6 emails à +3 h, +2 j, +7 j, +21 j, +45 j, +75 j (lancer un dossier, comment ça marche + tarifs,
+   appel 15 min, pas de chantier, chantier bientôt, dernier message). S'arrête si paiement ou si la personne atteint le
+   dernier écran (la suite « abandon » prend le relais).
+4. **WhatsApp** : bouton flottant (sauf /commande) et numéro en pied de page, 06 26 34 44 75.
 
 ## À faire ensuite (proposé, pas encore construit)
 - Vérification gratuite « Pas de chantier en ce moment ? » : adresse + type de travaux → réponse DP/PC + contraintes PLU.
-- Relance mensuelle de tous les intéressés non acheteurs (Explee + formulaire).
