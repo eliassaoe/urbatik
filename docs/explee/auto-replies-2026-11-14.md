@@ -19,3 +19,4 @@ Project creha.fr (61157) only, project 30475 untouched:
 - Email sequences contain no link, nothing to change.
 
 - 18:40: booking link changed to the Calendly event, renamed by the owner's request to "Appel avec Urbatik": `https://calendly.com/hamoureliasse/appel-avec-urbatik` (the old `appel-avec-urbaa` link no longer exists). The instructions still end every reply with the site link and never send a calendar link on their own.
+- 18:45: owner's call — every reply now ends with the site first, then the Calendly as an option (to collect early feedback, not to sell). Full text in `creha-61157-instructions.txt`.
