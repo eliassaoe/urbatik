@@ -34,3 +34,10 @@ Avant : 3 ou 5 salariés minimum, artisans seuls exclus. Maintenant : **à parti
 sur les 10 campagnes (profil par défaut + les 5 ciblages personnalisés). Raison : un artisan seul ou à 2-3 n'a
 personne pour l'administratif, donc le besoin est plus urgent. À comparer dimanche : taux de leads intéressés
 avant/après, et taille des entreprises qui commandent.
+
+## Focus semaine 1 (14 nov. 21:45, décision du gérant)
+Seulement les meilleures niches : Vérandalistes & Pergolistes (+ « similar companies »), Piscinistes, Abris de jardin,
+Abris/studios & constructions bois, Clôturistes & portails. **Façadiers mis en pause** ; Photovoltaïque et Paysagistes
+restent « en revue », non approuvés (aucun envoi). Studios de jardin : en pause par Explee, 0 envoi.
+Plafonds par campagne au moment du changement : Vérandalistes 12 $, Abris de jardin 5 $, les 4 autres 3 $ (total 29 $/jour).
+Les autres niches viendront en semaine 2.
