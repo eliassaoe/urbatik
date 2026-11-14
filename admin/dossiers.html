@@ -55,11 +55,12 @@ tbody tr:hover{background:var(--soft)}
   <section id="list" hidden>
     <div class="stats" id="stats"></div>
     <div class="row" style="justify-content:space-between;margin-bottom:14px">
-      <div class="tabs"><button class="tab on" data-tab="orders">Commandes</button><button class="tab" data-tab="clients">Contacts</button></div>
+      <div class="tabs"><button class="tab on" data-tab="orders">Commandes</button><button class="tab" data-tab="clients">Contacts</button><button class="tab" data-tab="avis">Avis</button></div>
       <select id="filter" style="width:auto"><option value="">Tous les statuts</option></select>
     </div>
     <div class="tbl" id="ordersTbl"><table><thead><tr><th>Date</th><th>Entreprise</th><th>Dossier</th><th>Statut</th><th>Photos</th><th>Montant</th></tr></thead><tbody id="rows"></tbody></table></div>
     <div class="tbl" id="clientsTbl" hidden><table><thead><tr><th>Dernière visite</th><th>Email</th><th>Nom</th><th>Entreprise</th><th>Téléphone</th><th>Offre lancée</th></tr></thead><tbody id="crows"></tbody></table></div>
+    <div class="tbl" id="avisTbl" hidden><table><thead><tr><th>Date</th><th>Note</th><th>Avis</th><th>Client</th><th>Sur le site</th></tr></thead><tbody id="arows"></tbody></table></div>
   </section>
 
   <section id="detail" hidden>

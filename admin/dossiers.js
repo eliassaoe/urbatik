@@ -58,9 +58,11 @@
     $('back').addEventListener('click', e => { e.preventDefault(); location.hash = ''; });
     document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
-        const c = b.dataset.tab === 'clients';
-        $('ordersTbl').hidden = c; $('clientsTbl').hidden = !c; $('filter').hidden = c;
-        if (c) loadClients();
+        const t = b.dataset.tab;
+        $('ordersTbl').hidden = t !== 'orders'; $('clientsTbl').hidden = t !== 'clients'; $('avisTbl').hidden = t !== 'avis';
+        $('filter').hidden = t !== 'orders';
+        if (t === 'clients') loadClients();
+        if (t === 'avis') loadReviews();
     }));
     window.addEventListener('hashchange', route);
 
@@ -121,6 +123,29 @@
         if (!clients.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 6; td.className = 'muted'; td.textContent = 'Aucun contact pour le moment.'; tr.appendChild(td); tbody.appendChild(tr); }
     }
 
+    async function loadReviews() {
+        const { reviews } = await api('reviews');
+        const tbody = $('arows'); tbody.textContent = '';
+        reviews.forEach(r => {
+            const tr = document.createElement('tr'); tr.style.cursor = 'default';
+            [date(r.created_at), '★'.repeat(r.note) + '☆'.repeat(5 - r.note), r.commentaire || '', [r.prenom, r.entreprise, r.ville].filter(Boolean).join(' · ')].forEach(v => {
+                const td = document.createElement('td'); td.textContent = v; td.style.whiteSpace = 'pre-line'; tr.appendChild(td);
+            });
+            const td = document.createElement('td');
+            const btn = document.createElement('button'); btn.className = r.approved ? 'btn2' : 'btn';
+            btn.style.cssText = 'padding:7px 12px;font-size:14px';
+            btn.textContent = r.approved ? 'Retirer' : 'Publier';
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                try { await api('review_approve', { id: r.id, approved: !r.approved }); flash(r.approved ? 'Avis retiré du site.' : 'Avis publié sur le site.'); loadReviews(); }
+                catch (e) { btn.disabled = false; flash("Échec, réessayez."); }
+            });
+            td.appendChild(btn); tr.appendChild(td);
+            tbody.appendChild(tr);
+        });
+        if (!reviews.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 5; td.className = 'muted'; td.textContent = "Aucun avis pour le moment. La demande part toute seule quand un dossier passe en « Livrée »."; tr.appendChild(td); tbody.appendChild(tr); }
+    }
+
     function kv(dl, rows) {
         dl.textContent = '';
         rows.forEach(([k, v, href]) => {
@@ -133,6 +158,7 @@
 
     async function route() {
         const id = location.hash.slice(1);
+        if (id === 'avis') { location.hash = ''; show('list'); renderList(); document.querySelector('.tab[data-tab="avis"]').click(); return; }
         if (!id) { show('list'); renderList(); return; }
         show('detail');
         $('dTitle').textContent = 'Chargement…'; $('dFiles').textContent = '';

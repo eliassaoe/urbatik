@@ -83,6 +83,11 @@ details p{color:var(--muted);margin:10px 0 0}
 .tgrid{display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
 .tgrid strong{display:block;font-size:15px;margin-bottom:4px}
 .tgrid span{display:block;color:var(--muted);font-size:14px;line-height:1.5}
+.reviews{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.review{border:1px solid var(--line);border-radius:16px;padding:20px}
+.review .st{color:#f5b301;letter-spacing:2px;margin-bottom:8px}
+.review p{margin:0 0 12px;font-size:15px}
+.review small{color:var(--muted);font-size:13px}
 footer{padding:32px 0 48px;color:var(--muted);font-size:14px;text-align:center;border-top:1px solid var(--line)}
 footer a{color:var(--muted)}
 </style>
@@ -147,6 +152,14 @@ footer a{color:var(--muted)}
   </div>
 </section>
 
+<section id="avis" hidden>
+  <div class="wrap">
+    <h2>Ce qu'en disent nos clients</h2>
+    <p class="center muted" id="avisNote" style="margin:-14px 0 26px"></p>
+    <div class="reviews" id="avisList"></div>
+  </div>
+</section>
+
 <section>
   <div class="wrap">
     <div class="guarantee">
@@ -182,7 +195,7 @@ footer a{color:var(--muted)}
 <script>
 const CONFIG = {
   order: "/commande",
-  call:  "https://calendly.com/hamoureliasse/appel-avec-urbaa" // à remplacer par « Urbatik – 15 min »
+  call:  "https://calendly.com/hamoureliasse/appel-avec-urbaa"
 };
 (function () {
   const params = new URLSearchParams(location.search);
@@ -198,6 +211,24 @@ const CONFIG = {
     a.addEventListener("click", () => track(EVENT[kind], { offer: "dossier_express", label: a.textContent.trim().slice(0, 80) }));
   });
   track("dossier_express_page_view", { offer: "dossier_express" });
+  // Avis clients : seuls les avis validés dans l'admin, la section reste cachée tant qu'il n'y en a pas.
+  fetch("https://snxhsboboatjywgwdeds.supabase.co/rest/v1/urbatik_avis_publics?select=note,commentaire,prenom,entreprise,ville,created_at&order=created_at.desc&limit=12",
+    { headers: { apikey: "sb_publishable_RKidGRs4ch1ixmRfXoYSww_UsQMSe5w" } })
+    .then(r => r.ok ? r.json() : []).then(rows => {
+      if (!Array.isArray(rows) || !rows.length) return;
+      const list = document.getElementById("avisList");
+      rows.forEach(a => {
+        const d = document.createElement("div"); d.className = "review";
+        const st = document.createElement("div"); st.className = "st"; st.textContent = "★".repeat(a.note) + "☆".repeat(5 - a.note);
+        d.appendChild(st);
+        if (a.commentaire) { const p = document.createElement("p"); p.textContent = "« " + a.commentaire + " »"; d.appendChild(p); }
+        const s = document.createElement("small"); s.textContent = [a.prenom, a.entreprise, a.ville].filter(Boolean).join(" · "); d.appendChild(s);
+        list.appendChild(d);
+      });
+      const avg = rows.reduce((x, a) => x + a.note, 0) / rows.length;
+      document.getElementById("avisNote").textContent = avg.toFixed(1).replace(".", ",") + "/5 sur " + rows.length + " avis vérifiés, laissés après livraison";
+      document.getElementById("avis").hidden = false;
+    }).catch(() => {});
 })();
 </script>
 </body>

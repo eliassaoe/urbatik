@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Votre avis · Urbatik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/urbatik.css">
+<style>
+.stars{display:flex;gap:6px;margin:6px 0 22px}
+.stars button{background:none;border:0;padding:2px;cursor:pointer;font-size:40px;line-height:1;color:#d4d4d8;transition:transform .1s}
+.stars button.on{color:#f5b301}
+.stars button:hover{transform:scale(1.08)}
+.stars button:focus-visible{outline:3px solid #c7c7cc;border-radius:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top"><a class="logo" href="/">Urbatik</a></header>
+
+  <section id="form" hidden style="margin-top:20px">
+    <h1>Comment s'est passé votre dossier ?</h1>
+    <p class="muted" id="sub"></p>
+    <div class="card">
+      <div class="stars" id="stars" role="radiogroup" aria-label="Note sur 5"></div>
+      <label class="f">Un mot pour les autres artisans (facultatif)<textarea id="com" maxlength="1500" placeholder="Délai, qualité du dossier, retour de la mairie…"></textarea></label>
+      <button class="btn" id="send" style="width:100%" disabled>Envoyer mon avis</button>
+      <p class="err" id="err"></p>
+    </div>
+  </section>
+
+  <section id="done" hidden style="margin-top:40px;text-align:center">
+    <h1>Merci !</h1>
+    <p class="muted">Votre avis est bien reçu. Il aide d'autres professionnels à nous faire confiance.</p>
+    <p><a class="btn2" href="/commande">Lancer un autre dossier</a></p>
+  </section>
+
+  <section id="bad" hidden style="margin-top:40px;text-align:center">
+    <h1>Lien invalide</h1>
+    <p class="muted">Ce lien d'avis n'est plus valable. Écrivez-nous à <a href="mailto:support@linkfinderai.com">support@linkfinderai.com</a>.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  const API = "https://snxhsboboatjywgwdeds.supabase.co/functions/v1/client-order";
+  const KEY = "sb_publishable_RKidGRs4ch1ixmRfXoYSww_UsQMSe5w";
+  const $ = id => document.getElementById(id);
+  const token = new URLSearchParams(location.search).get("token") || "";
+  let note = 0;
+  async function call(payload) {
+    const res = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", apikey: KEY },
+      body: JSON.stringify(Object.assign({ token }, payload)) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || "erreur"), { status: res.status });
+    return data;
+  }
+  function paint() {
+    [...$("stars").children].forEach((b, i) => { b.classList.toggle("on", i < note); b.setAttribute("aria-checked", String(i + 1 === note)); });
+    $("send").disabled = !note;
+  }
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = "★"; b.setAttribute("role", "radio"); b.setAttribute("aria-label", i + " sur 5");
+    b.addEventListener("click", () => { note = i; paint(); });
+    $("stars").appendChild(b);
+  }
+  $("send").addEventListener("click", async () => {
+    $("send").disabled = true; $("err").textContent = "";
+    try {
+      await call({ action: "review", note, commentaire: $("com").value });
+      $("form").hidden = true; $("done").hidden = false;
+    } catch (e) { $("err").textContent = "L'envoi n'a pas marché. Réessayez dans un instant."; $("send").disabled = false; }
+  });
+  call({ action: "get" }).then(d => {
+    $("sub").textContent = d.type_dossier + " · " + d.adresse;
+    $("form").hidden = false;
+  }).catch(() => { $("bad").hidden = false; });
+})();
+</script>
+</body>
+</html>
