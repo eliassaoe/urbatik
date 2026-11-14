@@ -7,3 +7,13 @@
 - **linkfinderai.com project (30475)** — owner rule: do not touch. It was changed by mistake on
   14 Nov around 12:10 and restored at 13:05 (booking link and the exact 3000-character
   instructions, kept in `linkfinder-30475-instructions-original.txt`).
+
+## 14 Nov 2026, 18:30 Paris: switched to urbatik.com (owner request)
+
+Project creha.fr (61157) only, project 30475 untouched:
+- Auto-reply instructions: the site link is now `https://urbatik.com/?utm_source=cold_email&utm_campaign=creha&utm_content=reponse` (copy in `creha-61157-instructions.txt`).
+- Booking link: `https://urbatik.com/commande?utm_source=cold_email&utm_campaign=creha&utm_content=reponse`
+  (Explee refuses a homepage in that field, so it points at the order form).
+- Project docs → Company: name Urbatik, Stains, founded 2026, logo https://urbatik.com/og.png, description of the
+  Urbatik service (creHA cited as partner, same wording as the site).
+- Email sequences contain no link, nothing to change.
