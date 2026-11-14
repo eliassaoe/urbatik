@@ -22,6 +22,8 @@
       url.searchParams.forEach(function (v, k) { if (/^utm_/.test(k)) utm[k] = v; });
       fetch(VISIT, { method: "POST", headers: { "Content-Type": "application/json", apikey: APIKEY },
         body: JSON.stringify({ email: e, utm: utm, page: location.pathname }), keepalive: true }).catch(function () {});
+      var cap = function () { try { posthog.capture("dossier_express_lead_link_visit", { page: location.pathname, utm_campaign: utm.utm_campaign || null }); } catch (x) {} };
+      if (window.posthog) setTimeout(cap, 0); else addEventListener("load", cap);
       url.searchParams.delete("e"); url.searchParams.delete("email");
       history.replaceState(null, "", url.pathname + (url.search || "") + url.hash);
     }

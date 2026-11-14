@@ -26,6 +26,7 @@
 .next li:last-child{border-bottom:0}
 .next li::before{content:counter(n);width:26px;height:26px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-size:13px;font-weight:600;flex:none}
 </style>
+<script src="/js/site.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -67,7 +68,7 @@ const CONFIG = {
     a.addEventListener("click", () => track(k === "call" ? "dossier_express_click_call" : "dossier_express_click_order"));
   });
   const p = new URLSearchParams(location.search);
-  track("dossier_express_merci_view", { paid: p.has("commande") || p.get("status") === "succeeded" });
+  track("dossier_express_merci_view", { paid: p.has("commande") || p.get("status") === "succeeded", status: p.get("status") || null, commande: (p.get("commande") || "").slice(0, 8) || null });
 })();
 </script>
 </body>
