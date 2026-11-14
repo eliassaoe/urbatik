@@ -4,7 +4,7 @@
 (function () {
     'use strict';
     const API = 'https://snxhsboboatjywgwdeds.supabase.co/functions/v1/admin-dossiers';
-    const KEY = 'urbaa_admin_token';
+    const KEY = 'urbatik_admin_token';
     const $ = id => document.getElementById(id);
 
     const STATUS = {
