@@ -28,3 +28,9 @@ chantier. Les commandes des derniers jours tomberont la semaine suivante.
 
 À regarder aussi : quelle niche donne les leads, combien de leads vont sur le site (PostHog, utm_campaign=creha),
 où ils abandonnent le formulaire (tableau de bord PostHog « Urbaa – parcours de commande »).
+
+## Changement de ciblage (14 nov. 21:05, décision du gérant)
+Avant : 3 ou 5 salariés minimum, artisans seuls exclus. Maintenant : **à partir de 1 salarié, artisans seuls inclus**,
+sur les 10 campagnes (profil par défaut + les 5 ciblages personnalisés). Raison : un artisan seul ou à 2-3 n'a
+personne pour l'administratif, donc le besoin est plus urgent. À comparer dimanche : taux de leads intéressés
+avant/après, et taille des entreprises qui commandent.
