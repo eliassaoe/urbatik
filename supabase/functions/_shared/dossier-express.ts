@@ -128,7 +128,7 @@ export function missingItems(order: Record<string, unknown>, kinds: string[]): s
     const out: string[] = [];
     for (const k of REQUIRED_PHOTOS) if (!kinds.includes(k)) out.push(FILE_KINDS[k]);
     if (order.type_dossier !== 'dp' && (order.surface_existante_m2 === null || order.surface_existante_m2 === undefined)) {
-        out.push('Surface habitable actuelle de la maison (m²) : elle décide si un architecte est obligatoire');
+        out.push('Surface de plancher actuelle de la maison (m², proche de la surface habitable) : elle décide si un architecte est obligatoire');
     }
     if (order.type_ouvrage === 'piscine' && (order.piscine_abri_hauteur_m === null || order.piscine_abri_hauteur_m === undefined)) {
         out.push("Pour la piscine : hauteur de l'abri s'il y en a un (sinon, répondez « pas d'abri »)");
