@@ -125,7 +125,7 @@ En pratique, le client propriétaire dépose. Urbatik ne dépose pas pour le com
 | « Remboursé si la mairie refuse » | engagement commercial (CGV §8), pas une règle de droit |
 | « Rien à déposer ? On vous rembourse » | CGV §8, « Projet impossible ou sans démarche » |
 | « Pièce demandée par la mairie : préparée sans frais » | engagement commercial ; la liste du §5 est limitative |
-| « Relu par un professionnel de l'urbanisme » | **vrai seulement si un relecteur est engagé avant la première livraison.** À confirmer avant de livrer le premier dossier. |
+| « Réalisé par notre bureau d'études partenaire : plus de 370 dossiers, 4,9/5 sur plus de 220 avis » | PROPITECH sur ComeUp, chiffres de son profil au 15 nov. 2026 (399 ventes ; 4,9/5 sur 92 avis pour le permis et 148 pour la déclaration). Partenariat confirmé par le propriétaire le 15 nov. Ne pas le nommer sur le site. Remettre les chiffres à jour s'ils changent, et retirer la phrase si on cesse de travailler avec lui. |
 
 ## Sources
 
