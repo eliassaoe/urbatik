@@ -34,8 +34,8 @@ function message(step: number, prenom: string, site: string, call: string): { su
     if (step === 0) {
         return {
             subject: 'Votre dossier de mairie est prêt à partir',
-            html: shell(`<p>${esc(hello)}</p><p>Vous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier (Cerfa, plans, photomontage, notice) et vous le recevez en moins d'une semaine.</p>${btn(order, 'Valider mon dossier')}<p>Remboursé si la mairie refuse. Une question ? <a href="${esc(call)}">Parlons-en 15 minutes</a>.</p>`),
-            text: `${hello}\n\nVous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier et vous le recevez en moins d'une semaine.\n\nValider mon dossier : ${order}\n\nRemboursé si la mairie refuse. Une question ? 15 minutes : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
+            html: shell(`<p>${esc(hello)}</p><p>Vous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier (Cerfa, plans, photomontage, notice) et vous le recevez en 7 jours.</p>${btn(order, 'Valider mon dossier')}<p>Remboursé si la mairie refuse. Une question ? <a href="${esc(call)}">Parlons-en 15 minutes</a>.</p>`),
+            text: `${hello}\n\nVous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier et vous le recevez en 7 jours.\n\nValider mon dossier : ${order}\n\nRemboursé si la mairie refuse. Une question ? 15 minutes : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
         };
     }
     if (step === 1) {
@@ -57,10 +57,10 @@ function nurture(step: number, site: string, call: string): { subject: string; h
     const tarifs = `${site}/tarifs?utm_source=relance&utm_medium=email&utm_content=n${step + 1}`;
     const T: [string, string, string][] = [
         ['Votre dossier de mairie en 2 minutes',
-         `Merci de votre visite sur Urbatik. Quand un chantier demande une déclaration préalable ou un permis, vous remplissez 2 minutes en ligne et on prépare tout le dossier : Cerfa, plans, photomontage, notice. Livré en moins d'une semaine, remboursé si la mairie refuse.`,
+         `Merci de votre visite sur Urbatik. Quand un chantier demande une déclaration préalable ou un permis, vous remplissez 2 minutes en ligne et on prépare tout le dossier : Cerfa, plans, photomontage, notice. Livré en 7 jours, remboursé si la mairie refuse.`,
          'Lancer un dossier'],
         ['Comment on prépare vos dossiers de mairie',
-         `En 3 étapes : 1. vous décrivez le chantier et ajoutez 3 photos ; 2. on vérifie les règles du PLU de la commune ; 3. vous recevez le dossier complet, relu par un professionnel, prêt à déposer. Prix fixe, annoncé avant de payer.`,
+         `En 3 étapes : 1. vous décrivez le chantier et ajoutez 3 photos ; 2. on vérifie les règles du PLU de la commune ; 3. notre bureau d'études partenaire réalise le dossier complet, prêt à déposer. Prix fixe, annoncé avant de payer.`,
          'Voir les tarifs'],
         ['15 minutes pour regarder votre prochain chantier ?',
          `Si vous avez un projet en vue (pergola, véranda, abri, piscine, clôture…), on peut regarder ensemble en 15 minutes s'il faut une déclaration ou un permis, et ce que la mairie va demander.`,
@@ -69,10 +69,10 @@ function nurture(step: number, site: string, call: string): { subject: string; h
          `Pas de souci. Gardez cet email : le jour où un client signe, votre dossier de mairie se lance en 2 minutes. Beaucoup d'artisans l'ajoutent directement à leurs devis : « démarches mairie incluses, dossier sous 7 jours ».`,
          'Lancer un dossier'],
         ['Un chantier qui démarre bientôt ?',
-         `Avant de poser, il faut l'accord de la mairie. Plus le dossier part tôt, plus vite vous pouvez commencer. On s'en occupe en moins d'une semaine.`,
+         `Avant de poser, il faut l'accord de la mairie. Plus le dossier part tôt, plus vite vous pouvez commencer. On s'en occupe en 7 jours.`,
          'Lancer un dossier'],
         ['On reste là quand un dossier se présente',
-         `C'est notre dernier message. Le jour où une déclaration préalable ou un permis bloque un de vos chantiers, Urbatik le prépare pour vous en moins d'une semaine, remboursé si la mairie refuse.`,
+         `C'est notre dernier message. Le jour où une déclaration préalable ou un permis bloque un de vos chantiers, Urbatik le prépare pour vous en 7 jours, remboursé si la mairie refuse.`,
          'Lancer un dossier'],
     ];
     const [subject, body, label] = T[step];
