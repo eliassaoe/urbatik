@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Prospects · Admin Urbatik</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/urbatik.css">
+<style>
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:0 0 16px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:none;border:1px solid var(--line);font:inherit;font-size:14px;font-weight:600;padding:7px 12px;border-radius:999px;cursor:pointer;color:var(--muted)}
+.chip.on{background:var(--text);border-color:var(--text);color:#fff}
+.live{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
+.alert{background:#ecfdf3;border:1px solid #a7e3bd;color:#14532d;border-radius:14px;padding:12px 14px;margin:0 0 14px;font-weight:600}
+.list{display:grid;gap:12px}
+.p{border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:grid;gap:10px;background:#fff}
+.p.hot{border-color:var(--green);box-shadow:0 0 0 3px #16a34a22}
+.p.done{opacity:.6}
+.head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;justify-content:space-between}
+.who{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.who small{font-weight:500;color:var(--muted);font-size:14px;margin-left:6px}
+.tel{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;user-select:all}
+.visit{font-size:13px;font-weight:600;border-radius:999px;padding:3px 10px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.visit.now{background:var(--green);color:#fff}
+.visit.today{background:#dcfce7;color:#14532d}
+.said{font-size:14px;color:var(--muted);font-style:italic}
+.fields{display:grid;grid-template-columns:170px 1fr 150px;gap:10px}
+.fields2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:700px){.fields,.fields2{grid-template-columns:1fr}}
+.p label{font-size:12px;color:var(--muted);display:grid;gap:4px}
+.p input,.p select,.p textarea{font-size:15px;padding:8px 10px}
+.p textarea{min-height:60px}
+.meta{font-size:12px;color:var(--muted)}
+.saved{font-size:12px;color:var(--green)}
+.empty{color:var(--muted);padding:24px;border:1px dashed var(--line);border-radius:16px;text-align:center}
+dialog{border:1px solid var(--line);border-radius:16px;padding:20px;max-width:440px;width:calc(100% - 32px)}
+dialog::backdrop{background:#0006}
+</style>
+</head>
+<body>
+<div class="wrap wide">
+  <header class="top">
+    <a class="logo" href="/admin/prospects">Urbatik <span class="muted" style="font-weight:500">· prospects</span></a>
+    <div class="row"><a class="link" href="/admin/dossiers">Dossiers</a><button class="link" id="logout" style="background:none;border:0;cursor:pointer;font:inherit" hidden>Se déconnecter</button></div>
+  </header>
+
+  <section id="login" hidden style="max-width:380px;margin:60px auto">
+    <h1 style="font-size:28px">Espace gérant</h1>
+    <p class="muted">Entrez le mot de passe admin.</p>
+    <form id="loginForm">
+      <label class="f">Mot de passe<input type="password" name="password" id="pw" autocomplete="current-password" required></label>
+      <button class="btn" type="submit" style="width:100%">Se connecter</button>
+      <p class="err" id="loginMsg"></p>
+    </form>
+  </section>
+
+  <section id="main" hidden>
+    <div class="bar">
+      <div class="chips" id="chips">
+        <button class="chip on" data-f="today">Aujourd'hui</button>
+        <button class="chip" data-f="visited">Ont visité le site</button>
+        <button class="chip" data-f="todo">À traiter</button>
+        <button class="chip" data-f="all">Tous</button>
+      </div>
+      <div class="row">
+        <span class="live"><i></i><span id="liveTxt">À jour</span></span>
+        <button class="btn2" id="notifBtn" style="padding:7px 12px;font-size:14px">Alerte quand quelqu'un visite</button>
+        <button class="btn" id="addBtn" style="padding:7px 12px;font-size:14px">Ajouter</button>
+      </div>
+    </div>
+    <div class="alert" id="alert" hidden></div>
+    <div class="list" id="list"></div>
+  </section>
+</div>
+
+<dialog id="addDlg">
+  <form id="addForm" method="dialog">
+    <h2 style="margin-top:0">Nouveau prospect</h2>
+    <label class="f">Email<input type="email" id="aEmail" required></label>
+    <label class="f">Nom<input id="aNom"></label>
+    <label class="f">Entreprise<input id="aEnt"></label>
+    <label class="f">Téléphone<input id="aTel"></label>
+    <div class="row" style="justify-content:flex-end"><button class="btn2" value="cancel" formnovalidate>Annuler</button><button class="btn" id="aOk" value="ok">Ajouter</button></div>
+  </form>
+</dialog>
+<script src="/admin/prospects.js"></script>
+</body>
+</html>

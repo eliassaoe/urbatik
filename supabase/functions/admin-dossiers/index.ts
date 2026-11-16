@@ -4,6 +4,8 @@
 //   {action:'list', token}                → commandes (500 dernières) + photos reçues par commande
 //   {action:'get', token, id}             → commande, fichiers avec liens signés 7 jours
 //   {action:'update', token, id, status, admin_notes}
+//   {action:'crm_list', token}          → prospects pour /admin/prospects
+//   {action:'crm_update', token, email, fields, create?}
 //   {action:'clients', token}             → fichier clients (dossier_clients), payeurs ou non
 //
 // ADMIN_PASSWORD : choisi par le gérant, saisi par lui dans dossier_settings (jamais dans le dépôt).
@@ -123,6 +125,39 @@ Deno.serve(async (req) => {
         const { data, error } = await db.from('dossier_clients').select('*').order('updated_at', { ascending: false }).limit(1000);
         if (error) { console.error(error); return json({ error: 'db' }, 500); }
         return json({ clients: data ?? [] });
+    }
+
+    // Suivi commercial : page /admin/prospects. Tout contact sauf les adresses internes, visites en tête.
+    if (body.action === 'crm_list') {
+        const { data, error } = await db.from('dossier_clients')
+            .select('email, nom, entreprise, tel, metier, source, utm, visits, visited_at, last_visit_at, first_seen_at, offer_started_at, crm_status, crm_next, crm_relance, crm_notes, crm_said, crm_updated_at')
+            .not('email', 'ilike', '%linkfinderai%').neq('email', 'hamoureliasse@gmail.com')
+            .order('last_visit_at', { ascending: false, nullsFirst: false }).limit(2000);
+        if (error) { console.error(error); return json({ error: 'db' }, 500); }
+        const emails = (data ?? []).map(c => c.email);
+        const { data: paid } = emails.length ? await db.from('orders').select('contact_email, status, paid_at').in('contact_email', emails) : { data: [] };
+        const orders: Record<string, { status: string; paid: boolean }[]> = {};
+        for (const o of paid ?? []) (orders[o.contact_email] ??= []).push({ status: o.status, paid: !!o.paid_at });
+        return json({ prospects: (data ?? []).map(c => ({ ...c, orders: orders[c.email] ?? [] })), now: new Date().toISOString() });
+    }
+
+    if (body.action === 'crm_update') {
+        const email = String(body.email ?? '').trim().toLowerCase();
+        if (!email.includes('@')) return json({ error: 'email' }, 422);
+        const CRM = ['a_appeler', 'rappel', 'pas_repondu', 'lien_envoye', 'rdv', 'client', 'perdu'];
+        const f = body.fields ?? {};
+        const patch: Record<string, unknown> = { email, crm_updated_at: new Date().toISOString() };
+        if (typeof f.crm_status === 'string') { if (!CRM.includes(f.crm_status)) return json({ error: 'status' }, 422); patch.crm_status = f.crm_status; }
+        for (const k of ['nom', 'entreprise', 'tel', 'metier', 'crm_next', 'crm_notes', 'crm_said']) {
+            if (typeof f[k] === 'string') patch[k] = f[k].slice(0, 5000) || null;
+        }
+        if ('crm_relance' in f) patch.crm_relance = /^\d{4}-\d{2}-\d{2}$/.test(String(f.crm_relance ?? '')) ? f.crm_relance : null;
+        if (body.create) { patch.source = typeof f.source === 'string' ? f.source : 'manuel'; patch.updated_at = patch.crm_updated_at; }
+        const { error } = body.create
+            ? await db.from('dossier_clients').upsert(patch, { onConflict: 'email' })
+            : await db.from('dossier_clients').update(patch).eq('email', email);
+        if (error) { console.error(error); return json({ error: 'db' }, 500); }
+        return json({ ok: true });
     }
 
     return json({ error: 'action' }, 400);
