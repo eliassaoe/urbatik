@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
     // Suivi commercial : page /admin/prospects. Tout contact sauf les adresses internes, visites en tête.
     if (body.action === 'crm_list') {
         const { data, error } = await db.from('dossier_clients')
-            .select('email, nom, entreprise, tel, metier, source, utm, visits, visited_at, last_visit_at, first_seen_at, offer_started_at, crm_status, crm_next, crm_relance, crm_notes, crm_said, crm_updated_at')
+            .select('email, nom, entreprise, tel, metier, source, utm, visits, visited_at, last_visit_at, first_seen_at, offer_started_at, crm_status, crm_next, crm_relance, crm_notes, crm_said, crm_updated_at, crm_called_at, crm_call_result, crm_calls, crm_done_at')
             .not('email', 'ilike', '%linkfinderai%').neq('email', 'hamoureliasse@gmail.com')
             .order('last_visit_at', { ascending: false, nullsFirst: false }).limit(2000);
         if (error) { console.error(error); return json({ error: 'db' }, 500); }
@@ -152,6 +152,14 @@ Deno.serve(async (req) => {
             if (typeof f[k] === 'string') patch[k] = f[k].slice(0, 5000) || null;
         }
         if ('crm_relance' in f) patch.crm_relance = /^\d{4}-\d{2}-\d{2}$/.test(String(f.crm_relance ?? '')) ? f.crm_relance : null;
+        if (f.call === 'ok' || f.call === 'no_answer') {
+            const { data: c } = await db.from('dossier_clients').select('crm_calls').eq('email', email).maybeSingle();
+            patch.crm_called_at = patch.crm_updated_at; patch.crm_call_result = f.call; patch.crm_calls = (c?.crm_calls ?? 0) + 1;
+            if (f.call === 'no_answer' && typeof f.crm_status !== 'string') patch.crm_status = 'pas_repondu';
+        } else if (f.call === 'undo') {
+            patch.crm_called_at = null; patch.crm_call_result = null; patch.crm_calls = 0;
+        }
+        if (typeof f.done === 'boolean') patch.crm_done_at = f.done ? patch.crm_updated_at : null;
         if (body.create) { patch.source = typeof f.source === 'string' ? f.source : 'manuel'; patch.updated_at = patch.crm_updated_at; }
         const { error } = body.create
             ? await db.from('dossier_clients').upsert(patch, { onConflict: 'email' })

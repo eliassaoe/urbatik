@@ -7,3 +7,9 @@ alter table public.dossier_clients
   add column if not exists crm_said text,
   add column if not exists metier text,
   add column if not exists crm_updated_at timestamptz;
+-- Boutons « Appelé / Pas répondu » et « Terminé ».
+alter table public.dossier_clients
+  add column if not exists crm_called_at timestamptz,
+  add column if not exists crm_call_result text,
+  add column if not exists crm_calls int not null default 0,
+  add column if not exists crm_done_at timestamptz;

@@ -39,6 +39,11 @@
 .p textarea{min-height:60px}
 .meta{font-size:12px;color:var(--muted)}
 .saved{font-size:12px;color:var(--green)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.act{font:inherit;font-size:14px;font-weight:600;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--text);cursor:pointer}
+.act.call.on{background:var(--green);border-color:var(--green);color:#fff}
+.act.miss.on{background:#fff7ed;border-color:#fdba74;color:var(--amber)}
+.act.fin.on{background:var(--text);border-color:var(--text);color:#fff}
 .empty{color:var(--muted);padding:24px;border:1px dashed var(--line);border-radius:16px;text-align:center}
 dialog{border:1px solid var(--line);border-radius:16px;padding:20px;max-width:440px;width:calc(100% - 32px)}
 dialog::backdrop{background:#0006}

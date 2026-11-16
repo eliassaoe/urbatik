@@ -81,14 +81,15 @@
     function isToday(p) {
         const t = today();
         return [p.last_visit_at, p.first_seen_at, p.crm_updated_at].some(d => d && parisDay(d) === t)
-            || (p.crm_relance && p.crm_relance <= t && !CLOSED.includes(p.crm_status));
+            || (p.crm_relance && p.crm_relance <= t && !p.crm_done_at && !CLOSED.includes(p.crm_status));
     }
     function visible() {
         let rows = data;
         if (filter === 'today') rows = rows.filter(isToday);
         if (filter === 'visited') rows = rows.filter(p => p.last_visit_at);
-        if (filter === 'todo') rows = rows.filter(p => !CLOSED.includes(p.crm_status));
+        if (filter === 'todo') rows = rows.filter(p => !p.crm_done_at && !CLOSED.includes(p.crm_status));
         return rows.slice().sort((a, b) => {
+            if (!!a.crm_done_at !== !!b.crm_done_at) return a.crm_done_at ? 1 : -1;
             const va = a.last_visit_at ? new Date(a.last_visit_at).getTime() : 0, vb = b.last_visit_at ? new Date(b.last_visit_at).getTime() : 0;
             if (va !== vb) return vb - va;
             return String(a.crm_relance || '9999').localeCompare(String(b.crm_relance || '9999'));
@@ -125,7 +126,7 @@
     function card(p) {
         const d = document.createElement('div');
         const recent = p.last_visit_at && Date.now() - new Date(p.last_visit_at).getTime() < 30 * 60000;
-        d.className = 'p' + (recent ? ' hot' : '') + (CLOSED.includes(p.crm_status) ? ' done' : '');
+        d.className = 'p' + (recent && !p.crm_done_at ? ' hot' : '') + (p.crm_done_at || CLOSED.includes(p.crm_status) ? ' done' : '');
 
         const head = document.createElement('div'); head.className = 'head';
         const who = document.createElement('div'); who.className = 'who';
@@ -152,6 +153,8 @@
             const o = document.createElement('div'); o.className = 'meta'; o.textContent = '🟠 A commencé le formulaire de commande ' + ago(p.offer_started_at); d.appendChild(o);
         }
 
+        d.appendChild(actions(p));
+
         const f = document.createElement('div'); f.className = 'fields';
         const st = document.createElement('select');
         STATUS.forEach(([k, l]) => st.add(new Option(l, k)));
@@ -169,6 +172,32 @@
         const saved = document.createElement('span'); saved.className = 'saved'; meta.appendChild(saved);
         d.appendChild(meta);
         return d;
+    }
+
+    // Boutons d'appel : « Appelé » / « Pas répondu » enregistrent l'appel (heure, nombre) ; « Terminé » range le prospect en bas.
+    function actions(p) {
+        const a = document.createElement('div'); a.className = 'acts';
+        const mk = (label, cls, on, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'act ' + cls + (on ? ' on' : ''); b.textContent = label; b.addEventListener('click', fn); return b; };
+        const send = async (fields, local) => {
+            Object.assign(p, local);
+            try { await api('crm_update', { email: p.email, fields }); } catch (e) { alertMsg("Échec de l'enregistrement, réessayez."); }
+            render();
+        };
+        const stamp = () => new Date().toISOString();
+        a.append(
+            mk('📞 Appelé', 'call', p.crm_call_result === 'ok', () => send({ call: 'ok' }, { crm_call_result: 'ok', crm_called_at: stamp(), crm_calls: (p.crm_calls || 0) + 1 })),
+            mk('Pas répondu', 'miss', p.crm_call_result === 'no_answer', () => send({ call: 'no_answer' }, { crm_call_result: 'no_answer', crm_called_at: stamp(), crm_calls: (p.crm_calls || 0) + 1, crm_status: 'pas_repondu' })),
+            mk(p.crm_done_at ? '✓ Terminé' : 'Terminé', 'fin', !!p.crm_done_at, () => send({ done: !p.crm_done_at }, { crm_done_at: p.crm_done_at ? null : stamp() })),
+        );
+        const info = document.createElement('span'); info.className = 'meta';
+        if (p.crm_called_at) {
+            info.textContent = (p.crm_call_result === 'ok' ? 'Appelé ' : 'Pas répondu ') + ago(p.crm_called_at) + (p.crm_calls > 1 ? ` · ${p.crm_calls} appels` : '') + ' · ';
+            const u = document.createElement('a'); u.href = '#'; u.textContent = 'effacer'; u.className = 'link';
+            u.addEventListener('click', e => { e.preventDefault(); send({ call: 'undo' }, { crm_call_result: null, crm_called_at: null, crm_calls: 0 }); });
+            info.appendChild(u);
+        } else info.textContent = 'Pas encore appelé';
+        a.appendChild(info);
+        return a;
     }
 
     function render() {
