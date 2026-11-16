@@ -106,14 +106,14 @@ footer a{color:var(--muted)}
 <div class="wrap">
   <header>
     <a class="logo" href="/">Urbatik</a>
-    <nav class="nav"><a class="link hide-sm" href="/exemples">Réalisations</a><a class="link" href="/tarifs">Tarifs</a><a class="link hide-sm" data-link="call" href="#">Parler à un conseiller</a></nav>
+    <nav class="nav"><a class="link hide-sm" href="/exemples">Réalisations</a><a class="link" href="/tarifs">Tarifs</a><a class="link hide-sm" data-link="call" href="#">Un conseiller sur WhatsApp</a></nav>
   </header>
 
   <div class="hero">
     <div class="badge">Pour les artisans : pergolas, vérandas, abris, piscines, clôtures, solaire</div>
     <h1>On fait la déclaration préalable ou le permis de vos chantiers.</h1>
     <p class="sub">Cerfa rempli, plans cotés, photomontage et notice, faits par un bureau d'études spécialisé et prêts à déposer en mairie en 7 jours. Vous remplissez en 2 minutes, on gère toute la paperasse.</p>
-    <div class="ctas"><a class="btn" data-link="order" href="#">Commencer mon dossier <span aria-hidden="true">→</span></a><a class="btn2" data-link="call" href="#">Parler à un conseiller</a></div>
+    <div class="ctas"><a class="btn" data-link="order" href="#">Commencer mon dossier <span aria-hidden="true">→</span></a><a class="btn2" data-link="call" href="#">Un conseiller sur WhatsApp</a></div>
     <div class="ticks"><span>2 minutes</span><span>Livré en 7 jours</span><span>Remboursé si la mairie refuse</span></div>
   </div>
 </div>
@@ -226,7 +226,7 @@ footer a{color:var(--muted)}
 <section>
   <div class="wrap final">
     <h2 style="margin-bottom:22px">Prêt à lancer votre dossier ?</h2>
-    <div class="ctas"><a class="btn" data-link="order" href="#">Commencer mon dossier <span aria-hidden="true">→</span></a><a class="btn2" data-link="call" href="#">Parler à un conseiller</a></div>
+    <div class="ctas"><a class="btn" data-link="order" href="#">Commencer mon dossier <span aria-hidden="true">→</span></a><a class="btn2" data-link="call" href="#">Un conseiller sur WhatsApp</a></div>
     <p><a href="/tarifs">Voir les tarifs</a></p>
   </div>
 </section>
@@ -238,7 +238,7 @@ footer a{color:var(--muted)}
 <script>
 const CONFIG = {
   order: "/commande",
-  call:  "https://calendly.com/hamoureliasse/appel-avec-urbatik"
+  call:  "https://wa.me/33626344475?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20un%20dossier%20de%20mairie."
 };
 (function () {
   const params = new URLSearchParams(location.search);
@@ -248,7 +248,7 @@ const CONFIG = {
   document.querySelectorAll("[data-link]").forEach(a => {
     const kind = a.dataset.link;
     const u = new URL(CONFIG[kind], location.href);
-    keep.forEach(k => { if (params.get(k)) u.searchParams.set(k, params.get(k)); });
+    if (u.origin === location.origin) keep.forEach(k => { if (params.get(k)) u.searchParams.set(k, params.get(k)); });
     a.href = u.origin === location.origin ? u.pathname + u.search : u.toString();
     if (u.origin !== location.origin) { a.target = "_blank"; a.rel = "noopener"; }
     a.addEventListener("click", () => track(EVENT[kind], { offer: "dossier_express", label: a.textContent.trim().slice(0, 80) }));

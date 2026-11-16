@@ -75,7 +75,7 @@ footer a{color:var(--muted)}
 <div class="wrap">
   <header>
     <a class="logo" href="/">Urbatik</a>
-    <nav><a class="link hide-sm" href="/exemples">Réalisations</a><a class="link on" href="/tarifs">Tarifs</a><a class="link hide-sm" data-link="call" href="#">Parler à un conseiller</a></nav>
+    <nav><a class="link hide-sm" href="/exemples">Réalisations</a><a class="link on" href="/tarifs">Tarifs</a><a class="link hide-sm" data-link="call" href="#">Un conseiller sur WhatsApp</a></nav>
   </header>
 
   <div class="head">
@@ -135,7 +135,7 @@ footer a{color:var(--muted)}
         <li>Un seul contact pour suivre vos dossiers</li>
         <li>Un tarif adapté à votre volume</li>
       </ul>
-      <a class="btn2" data-link="call" href="#">Parler à un conseiller</a>
+      <a class="btn2" data-link="call" href="#">Un conseiller sur WhatsApp</a>
     </div>
   </div>
   <p class="note">Paiement sécurisé par carte. Facture avec TVA. Vous pouvez aussi choisir « je ne sais pas » : facturé comme une déclaration préalable, on vérifie pour vous.</p>
@@ -191,7 +191,7 @@ footer a{color:var(--muted)}
 </footer>
 
 <script>
-const CONFIG = { order: "/commande", call: "https://calendly.com/hamoureliasse/appel-avec-urbatik" };
+const CONFIG = { order: "/commande", call: "https://wa.me/33626344475?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20un%20dossier%20de%20mairie." };
 (function () {
   const params = new URLSearchParams(location.search);
   const keep = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
@@ -200,7 +200,7 @@ const CONFIG = { order: "/commande", call: "https://calendly.com/hamoureliasse/a
   document.querySelectorAll("[data-link]").forEach(a => {
     const kind = a.dataset.link;
     const u = new URL(CONFIG[kind], location.href);
-    keep.forEach(k => { if (params.get(k)) u.searchParams.set(k, params.get(k)); });
+    if (u.origin === location.origin) keep.forEach(k => { if (params.get(k)) u.searchParams.set(k, params.get(k)); });
     if (a.dataset.type) u.searchParams.set("type", a.dataset.type);
     a.href = u.origin === location.origin ? u.pathname + u.search : u.toString();
     if (u.origin !== location.origin) { a.target = "_blank"; a.rel = "noopener"; }

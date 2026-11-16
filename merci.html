@@ -32,7 +32,7 @@
 <div class="wrap">
   <header class="top">
     <a class="logo" href="/">Urbatik</a>
-    <a class="link" data-link="call" href="#">Parler à un conseiller</a>
+    <a class="link" data-link="call" href="#">Un conseiller sur WhatsApp</a>
   </header>
   <main style="padding:40px 0 20px">
     <div class="ok" aria-hidden="true">✓</div>
@@ -49,7 +49,7 @@
     </div>
     <div class="row" style="margin-top:22px">
       <a class="btn" data-link="order" href="#">Lancer un autre dossier</a>
-      <a class="btn2" data-link="call" href="#">Parler à un conseiller</a>
+      <a class="btn2" data-link="call" href="#">Un conseiller sur WhatsApp</a>
     </div>
   </main>
   <footer class="foot">Urbatik · Eliasse Hamour EI · SIRET 937 788 172 00016 · <a href="/mentions-legales">Mentions légales</a> · <a href="/cgv">CGV</a> · <a href="/confidentialite">Confidentialité</a></footer>
@@ -57,7 +57,7 @@
 <script>
 const CONFIG = {
   order: "/commande",
-  call:  "https://calendly.com/hamoureliasse/appel-avec-urbatik"
+  call:  "https://wa.me/33626344475?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20un%20dossier%20de%20mairie."
 };
 (function () {
   const track = (n, p) => { try { window.posthog && posthog.capture(n, Object.assign({ offer: "dossier_express", page: "merci" }, p || {})); } catch (e) {} };
