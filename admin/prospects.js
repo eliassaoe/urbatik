@@ -13,6 +13,7 @@
 
     let token = ''; try { token = localStorage.getItem(KEY) || ''; } catch (e) {}
     let filter = 'today', data = [], seen = null, editing = 0, notif = false;
+    const waOpen = new Set(); // panneaux WhatsApp ouverts : restent ouverts au rafraîchissement
 
     const parisDay = d => new Date(d).toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
     const today = () => parisDay(Date.now());
@@ -153,7 +154,7 @@
             const o = document.createElement('div'); o.className = 'meta'; o.textContent = '🟠 A commencé le formulaire de commande ' + ago(p.offer_started_at); d.appendChild(o);
         }
 
-        d.appendChild(actions(p));
+        const acts = actions(p); d.appendChild(acts); d.appendChild(acts.wa);
 
         const f = document.createElement('div'); f.className = 'fields';
         const st = document.createElement('select');
@@ -189,6 +190,26 @@
             mk('Pas répondu', 'miss', p.crm_call_result === 'no_answer', () => send({ call: 'no_answer' }, { crm_call_result: 'no_answer', crm_called_at: stamp(), crm_calls: (p.crm_calls || 0) + 1, crm_status: 'pas_repondu' })),
             mk(p.crm_done_at ? '✓ Terminé' : 'Terminé', 'fin', !!p.crm_done_at, () => send({ done: !p.crm_done_at }, { crm_done_at: p.crm_done_at ? null : stamp() })),
         );
+        const wa = waNumber(p.tel);
+        const wb = mk('💬 WhatsApp', 'wa', false, () => { panel.hidden = !panel.hidden; panel.hidden ? waOpen.delete(p.email) : waOpen.add(p.email); if (!panel.hidden) ta.focus(); });
+        if (!wa) { wb.disabled = true; wb.title = 'Pas de numéro de portable'; }
+        a.insertBefore(wb, a.children[2]);
+        // Panneau WhatsApp : message prérempli selon la situation, modifiable, puis ouverture de WhatsApp sur ce numéro.
+        const panel = document.createElement('div'); panel.className = 'wa-panel'; panel.hidden = !waOpen.has(p.email);
+        const ta = document.createElement('textarea'); ta.value = waMessage(p); ta.rows = 4;
+        ta.addEventListener('focus', () => { editing++; }); ta.addEventListener('blur', () => { editing = Math.max(0, editing - 1); });
+        const go = document.createElement('a'); go.className = 'btn'; go.target = '_blank'; go.rel = 'noopener'; go.textContent = 'Envoyer sur WhatsApp';
+        const upd = () => { go.href = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(ta.value); };
+        ta.addEventListener('input', upd); upd();
+        go.addEventListener('click', () => {
+            const line = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' : WhatsApp envoyé.';
+            const notes = (p.crm_notes ? p.crm_notes + '\n' : '') + line;
+            panel.hidden = true; waOpen.delete(p.email);
+            send({ crm_notes: notes }, { crm_notes: notes });
+        });
+        const hint = document.createElement('span'); hint.className = 'meta'; hint.textContent = 'WhatsApp s\'ouvre avec ce message : il reste à appuyer sur Envoyer.';
+        panel.append(ta, go, hint);
+        a.wa = panel;
         const info = document.createElement('span'); info.className = 'meta';
         if (p.crm_called_at) {
             info.textContent = (p.crm_call_result === 'ok' ? 'Appelé ' : 'Pas répondu ') + ago(p.crm_called_at) + (p.crm_calls > 1 ? ` · ${p.crm_calls} appels` : '') + ' · ';
@@ -198,6 +219,30 @@
         } else info.textContent = 'Pas encore appelé';
         a.appendChild(info);
         return a;
+    }
+
+    // Numéro au format WhatsApp (33...) : le premier portable (06 / 07) du champ téléphone.
+    function waNumber(tel) {
+        const nums = String(tel || '').split(/[\/,;]| ou /).map(x => x.replace(/[^\d+]/g, '')).filter(Boolean);
+        const norm = n => n.startsWith('+') ? n.slice(1) : n.startsWith('00') ? n.slice(2) : n.startsWith('0') ? '33' + n.slice(1) : n;
+        const all = nums.map(norm).filter(n => n.length >= 11);
+        return all.find(n => /^33[67]/.test(n)) || null;
+    }
+    // Message prérempli selon où en est le prospect. Jamais de « on a vu que vous avez visité le site ».
+    function waMessage(p) {
+        const h = parseInt(new Date().toLocaleString('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }), 10);
+        const hello = h >= 18 ? 'Bonsoir' : 'Bonjour';
+        const first = (p.nom || '').trim().split(/\s+/)[0] || '';
+        const who = first ? hello + ' ' + first : hello;
+        const m = (p.metier || '').toLowerCase();
+        const pour = /piscin/.test(m) ? ' pour vos piscines' : /pergol|v[ée]rand/.test(m) ? ' pour vos pergolas et vérandas' : /abri|bois/.test(m) ? ' pour vos constructions bois' : /cl[oô]tur|portail/.test(m) ? ' pour vos clôtures et portails' : /fen[eê]tre|menuis/.test(m) ? ' pour vos menuiseries' : '';
+        if (p.crm_status === 'pas_repondu' || p.crm_call_result === 'no_answer')
+            return `${who}, c'est Eliasse d'Urbatik. J'ai essayé de vous joindre au sujet de vos dossiers de mairie${pour}. Quand puis-je vous rappeler ? Sinon, la demande se fait en ligne en 2 minutes sur urbatik.com.`;
+        if (p.crm_call_result === 'ok' || p.crm_status === 'rappel')
+            return `${who}, c'est Eliasse d'Urbatik, suite à notre échange. Avez-vous un chantier qui aurait besoin d'une déclaration préalable ou d'un permis ? On s'occupe de tout le dossier. Dites-moi quand je peux vous rappeler.`;
+        if (p.crm_status === 'lien_envoye' || p.crm_status === 'rdv')
+            return `${who}, c'est Eliasse d'Urbatik. Avez-vous des questions pour démarrer votre premier dossier ? Je peux vous répondre ici ou vous appeler.`;
+        return `${who}, c'est Eliasse d'Urbatik, suite à nos échanges par email sur les dossiers de mairie${pour}. Avez-vous des questions avant de vous lancer sur un premier dossier ? Je peux vous répondre ici, ou vous appeler si vous préférez.`;
     }
 
     function render() {
