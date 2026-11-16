@@ -202,13 +202,31 @@
         const upd = () => { go.href = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(ta.value); };
         ta.addEventListener('input', upd); upd();
         go.addEventListener('click', () => {
-            const line = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' : WhatsApp envoyé.';
+            const line = new Date().toLocaleString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' : WhatsApp envoyé (exemple : ' + waExample(p).label + ').';
             const notes = (p.crm_notes ? p.crm_notes + '\n' : '') + line;
             panel.hidden = true; waOpen.delete(p.email);
             send({ crm_notes: notes }, { crm_notes: notes });
         });
-        const hint = document.createElement('span'); hint.className = 'meta'; hint.textContent = 'WhatsApp s\'ouvre avec ce message : il reste à appuyer sur Envoyer.';
-        panel.append(ta, go, hint);
+        // Le PDF d'exemple : wa.me ne peut pas joindre de fichier. Sur téléphone, « Avec le PDF » passe par le
+        // partage du système (le PDF arrive au-dessus du message, on choisit le contact dans WhatsApp).
+        // Partout ailleurs, le lien vers le PDF est déjà dans le texte.
+        const ex = waExample(p);
+        const pdf = document.createElement('button'); pdf.type = 'button'; pdf.className = 'btn2'; pdf.textContent = '📎 Avec le PDF (téléphone)';
+        pdf.hidden = !(navigator.canShare && navigator.share);
+        pdf.addEventListener('click', async () => {
+            try {
+                const blob = await (await fetch(ex.url)).blob();
+                const file = new File([blob], ex.file, { type: 'application/pdf' });
+                const text = ta.value.replace(/\n*Un exemple de dossier[^\n]*$/, '');
+                if (!navigator.canShare({ files: [file] })) { window.open(go.href, '_blank'); return; }
+                await navigator.share({ files: [file], text });
+                go.click();
+            } catch (e) { if (e && e.name !== 'AbortError') alertMsg("Le partage du PDF n'a pas marché : utilisez le bouton vert."); }
+        });
+        const row = document.createElement('div'); row.className = 'row'; row.append(go, pdf);
+        const hint = document.createElement('span'); hint.className = 'meta';
+        hint.textContent = `Exemple joint : ${ex.label}. WhatsApp s'ouvre avec le message et le lien du PDF : il reste à appuyer sur Envoyer.`;
+        panel.append(ta, row, hint);
         a.wa = panel;
         const info = document.createElement('span'); info.className = 'meta';
         if (p.crm_called_at) {
@@ -229,7 +247,17 @@
         return all.find(n => /^33[67]/.test(n)) || null;
     }
     // Message prérempli selon où en est le prospect. Jamais de « on a vu que vous avez visité le site ».
-    function waMessage(p) {
+    // Chaque WhatsApp part avec un exemple concret de dossier (règle du gérant, 16 nov. 2026).
+    // Clôture, pergola, abri, piscine, véranda : une déclaration préalable. Extension, maison, garage : un permis.
+    function waExample(p) {
+        const m = ((p.metier || '') + ' ' + (p.crm_notes || '')).toLowerCase();
+        const B = 'https://urbatik.com/img/exemples/';
+        if (/carport|garage|balcon/.test(m)) return { label: 'permis carport et balcon', url: B + 'permis-carport-balcon.pdf', file: 'Urbatik - Exemple permis de construire.pdf' };
+        if (/extension|sur[ée]l[ée]v|maison|constructeur|agrandis/.test(m)) return { label: 'permis surélévation et extension', url: B + 'permis-surelevation-extension.pdf', file: 'Urbatik - Exemple permis de construire.pdf' };
+        return { label: 'déclaration préalable (préau)', url: B + 'declaration-preau.pdf', file: 'Urbatik - Exemple declaration prealable.pdf' };
+    }
+    function waMessage(p) { return waText(p) + '\n\nUn exemple de dossier qu\'on a fait : ' + waExample(p).url; }
+    function waText(p) {
         const h = parseInt(new Date().toLocaleString('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hour12: false }), 10);
         const hello = h >= 18 ? 'Bonsoir' : 'Bonjour';
         const first = (p.nom || '').trim().split(/\s+/)[0] || '';

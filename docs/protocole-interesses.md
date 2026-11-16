@@ -25,3 +25,15 @@ Règle du gérant : un artisan intéressé qui n'achète pas tout de suite ne do
 
 ## À faire ensuite (proposé, pas encore construit)
 - Vérification gratuite « Pas de chantier en ce moment ? » : adresse + type de travaux → réponse DP/PC + contraintes PLU.
+
+## WhatsApp : toujours avec un exemple (règle du gérant, 16 nov. 2026)
+
+Chaque message WhatsApp à un prospect part avec **un** PDF d'exemple (pas les quatre), sans logo
+partenaire ni nom de client : ceux de `img/exemples/`.
+- Clôture, pergola, abri, piscine, véranda → `declaration-preau.pdf`
+- Carport, garage, balcon → `permis-carport-balcon.pdf`
+- Extension, surélévation, maison → `permis-surelevation-extension.pdf`
+
+Envoi par Claude dans WhatsApp Web : le PDF en pièce jointe, puis le message.
+Bouton du CRM (`/admin/prospects`) : `wa.me` ne peut pas joindre de fichier, donc le lien du PDF est
+dans le texte ; sur téléphone, « Avec le PDF » joint le vrai fichier via le partage du système.
