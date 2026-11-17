@@ -33,6 +33,15 @@ x0, x1 : bords gauche et droit de l'ouverture en fraction de la largeur du mur (
 bas, haut : en fraction de la hauteur du mur entre le sol et la gouttière (0 à 1 ; > 1 si au-dessus).
 N'invente rien : une ouverture cachée par une haie n'est pas listée, et tu le dis dans remarques.`;
 
+// Le texte d'une réponse OpenRouter (chaîne ou liste de morceaux), puis le JSON qu'il contient.
+function lireJson(rep: any): any {
+    const c = rep?.choices?.[0]?.message?.content;
+    const texte = Array.isArray(c) ? c.map((x: any) => x?.text ?? '').join('') : String(c ?? '');
+    const i = texte.indexOf('{'), j = texte.lastIndexOf('}');
+    if (i < 0 || j < i) throw new Error(`réponse sans JSON : ${texte.slice(0, 160) || rep?.choices?.[0]?.finish_reason || 'vide'}`);
+    return JSON.parse(texte.slice(i, j + 1));
+}
+
 function b64(buf: Uint8Array): string {
     let s = '';
     for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
@@ -80,7 +89,7 @@ Deno.serve(async (req) => {
             method: 'POST',
             headers: { Authorization: `Bearer ${env('OPENROUTER_API_KEY')}`, 'Content-Type': 'application/json', 'X-Title': 'Urbatik' },
             body: JSON.stringify({
-                model: env('VISION_MODEL', 'anthropic/claude-sonnet-4.5'), max_tokens: 1500,
+                model: env('VISION_MODEL', 'anthropic/claude-sonnet-4.5'), max_tokens: 6000,
                 messages: [{ role: 'user', content: [
                     { type: 'image_url', image_url: { url: `data:${f.content_type};base64,${b64(new Uint8Array(await blob.arrayBuffer()))}` } },
                     { type: 'text', text: CONSIGNE }] }],
@@ -88,9 +97,8 @@ Deno.serve(async (req) => {
         });
         const rep = await r.json().catch(() => ({}));
         if (!r.ok) return json({ error: 'openrouter', detail: rep?.error?.message ?? r.status }, 502);
-        const texte = String(rep.choices?.[0]?.message?.content ?? '');
-        try { return json(JSON.parse(texte.slice(texte.indexOf('{'), texte.lastIndexOf('}') + 1))); }
-        catch { return json({ ouvertures: [], remarques: 'réponse illisible' }); }
+        try { return json(lireJson(rep)); }
+        catch (e) { return json({ ouvertures: [], remarques: `lecture impossible (${(e as Error).message})` }); }
     }
 
     if (body.action === 'photomontage') {
@@ -130,7 +138,7 @@ Deno.serve(async (req) => {
             method: 'POST',
             headers: { Authorization: `Bearer ${env('OPENROUTER_API_KEY')}`, 'Content-Type': 'application/json', 'X-Title': 'Urbatik' },
             body: JSON.stringify({
-                model: env('VISION_MODEL', 'anthropic/claude-sonnet-4.5'), max_tokens: 1200,
+                model: env('VISION_MODEL', 'anthropic/claude-sonnet-4.5'), max_tokens: 6000,
                 messages: [{ role: 'user', content: [
                     { type: 'text', text: 'Photo 1 : la photo originale du client.' },
                     { type: 'image_url', image_url: { url: `data:${f.content_type};base64,${b64(new Uint8Array(await avant.arrayBuffer()))}` } },
@@ -143,9 +151,8 @@ Réponds uniquement en JSON : {"ok": true|false, "ecarts": ["…"], "proportions
         });
         const rep = await r.json().catch(() => ({}));
         if (!r.ok) return json({ error: 'openrouter', detail: rep?.error?.message ?? r.status }, 502);
-        const texte = String(rep.choices?.[0]?.message?.content ?? '');
-        try { return json(JSON.parse(texte.slice(texte.indexOf('{'), texte.lastIndexOf('}') + 1))); }
-        catch { return json({ ok: false, ecarts: ['contrôle illisible'] }); }
+        try { return json(lireJson(rep)); }
+        catch (e) { return json({ ok: false, ecarts: [`contrôle illisible (${(e as Error).message})`] }); }
     }
 
     if (body.action === 'depot_url') {
