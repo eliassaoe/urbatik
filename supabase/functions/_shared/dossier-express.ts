@@ -116,10 +116,9 @@ export const FICHE: { titre: string; aide: string; champs: Champ[] }[] = [
         titre: 'Le projet', aide: 'Les mesures extérieures, en mètres. Elles seront dessinées telles quelles sur les plans.', champs: [
             { k: 'largeur_m', label: 'Largeur', type: 'num', unite: 'm', requis: true, min: 0.3, max: 60, ouvrages: VOLUME },
             { k: 'profondeur_m', label: 'Profondeur (avancée)', type: 'num', unite: 'm', requis: true, min: 0.3, max: 60, ouvrages: VOLUME },
-            { k: 'hauteur_max_m', label: 'Hauteur au point le plus haut', type: 'num', unite: 'm', requis: true, min: 0.5, max: 12, ouvrages: VOLUME },
             { k: 'toit', label: 'Forme du toit', type: 'choix', requis: true, ouvrages: ACCOLABLE,
               options: [['plat', 'Toit plat'], ['une_pente', 'Une pente'], ['deux_pentes', 'Deux pentes']] },
-            { k: 'hauteur_egout_m', label: 'Hauteur au point bas du toit (égout)', type: 'num', unite: 'm', requis: true, min: 0.5, max: 12,
+            { k: 'hauteur_egout_m', label: 'Hauteur au point bas du toit', type: 'num', unite: 'm', requis: true, min: 0.5, max: 12,
               si: { toit: ['une_pente', 'deux_pentes'] } },
             { k: 'implantation', label: 'Où se place-t-il ?', type: 'choix', requis: true, ouvrages: [...VOLUME, 'piscine'],
               options: [['accole', 'Accolé à la maison'], ['isole', 'Isolé dans le jardin']] },
@@ -160,35 +159,24 @@ export const FICHE: { titre: string; aide: string; champs: Champ[] }[] = [
         titre: 'Ouvertures du projet', aide: 'Portes, baies, passages. Laissez vide s\'il n\'y en a pas.', champs: [
             { k: 'ouverture_1', label: 'Ouverture 1', type: 'texte', ouvrages: ACCOLABLE, aide: 'Ex. : 1,80 × 2,10 m, face côté jardin, sans porte' },
             { k: 'ouverture_2', label: 'Ouverture 2', type: 'texte', ouvrages: ACCOLABLE },
-            { k: 'ouverture_3', label: 'Ouverture 3', type: 'texte', ouvrages: ACCOLABLE },
         ],
     },
     {
-        titre: 'Matériaux et couleurs du projet', aide: 'Ce qui sera écrit sur les plans et la notice.', champs: [
-            { k: 'structure', label: 'Structure', type: 'texte', requis: true, aide: 'Ex. : aluminium RAL 7016' },
-            { k: 'couverture', label: 'Toiture / couverture', type: 'texte', ouvrages: ACCOLABLE, requis: true, aide: 'Ex. : membrane EPDM noire, lames orientables, tuiles' },
-            { k: 'parois', label: 'Murs / parois', type: 'texte', ouvrages: ACCOLABLE, aide: 'Ex. : bardage composite beige, vitrage, ouvert' },
-        ],
-    },
-    {
-        titre: 'La maison existante', aide: 'Pour dessiner la coupe et les façades. Mesurez si possible, sinon estimez : le relecteur vérifie.', champs: [
+        titre: 'La maison existante', aide: "Pour dessiner la coupe et les façades. Sans les hauteurs, on les déduit du nombre de niveaux et des photos.", champs: [
             { k: 'niveaux', label: 'Niveaux', type: 'choix', requis: true, options: [['rdc', 'Plain-pied'], ['r1', 'Un étage'], ['r2', 'Deux étages'], ['combles', 'Plain-pied + combles aménagés']] },
-            { k: 'maison_gouttiere_m', label: 'Hauteur à la gouttière', type: 'num', unite: 'm', requis: true, min: 1.5, max: 15 },
-            { k: 'maison_faitage_m', label: 'Hauteur au faîtage (le plus haut)', type: 'num', unite: 'm', requis: true, min: 1.5, max: 20 },
-            { k: 'maison_toiture', label: 'Toiture', type: 'choix', requis: true,
-              options: [['tuiles', 'Tuiles'], ['ardoise', 'Ardoise'], ['bac_acier', 'Bac acier'], ['toit_plat', 'Toit plat'], ['autre', 'Autre']] },
-            { k: 'maison_toiture_couleur', label: 'Couleur de la toiture', type: 'texte', requis: true, aide: 'Ex. : rouge, gris anthracite' },
-            { k: 'maison_facade', label: 'Façades', type: 'texte', requis: true, aide: 'Ex. : enduit beige clair, pierre, brique' },
-            { k: 'maison_menuiseries', label: 'Fenêtres et portes', type: 'texte', requis: true, aide: 'Ex. : PVC blanc, volets bois verts' },
+            { k: 'maison_toiture', label: 'Toiture de la maison', type: 'texte', requis: true, aide: 'Matériau et couleur. Ex. : tuiles rouges' },
+            { k: 'maison_aspect', label: 'Murs et fenêtres de la maison', type: 'texte', requis: true, aide: 'Ex. : enduit beige, fenêtres PVC blanc' },
+            { k: 'maison_gouttiere_m', label: 'Hauteur à la gouttière, si vous la connaissez', type: 'num', unite: 'm', min: 1.5, max: 15 },
+            { k: 'maison_faitage_m', label: 'Hauteur au faîtage, si vous la connaissez', type: 'num', unite: 'm', min: 1.5, max: 20 },
         ],
     },
     {
         titre: 'Le terrain', aide: '', champs: [
-            { k: 'surface_terrain_m2', label: 'Surface du terrain', type: 'num', unite: 'm²', requis: true, min: 20, max: 1000000 },
+            { k: 'surface_terrain_m2', label: 'Surface du terrain, si vous la connaissez', type: 'num', unite: 'm²', min: 20, max: 1000000 },
             { k: 'terrain_pente', label: 'Le terrain est-il en pente ?', type: 'choix', requis: true, options: [['non', 'Non, plat'], ['legere', 'Légère pente'], ['forte', 'Forte pente']] },
             { k: 'arbres_abattus', label: 'Des arbres seront-ils abattus ?', type: 'choix', requis: true, options: [['non', 'Non'], ['oui', 'Oui']] },
-            { k: 'assainissement', label: 'Assainissement', type: 'choix', requis: true, options: [['collectif', "Tout-à-l'égout"], ['individuel', 'Fosse / assainissement individuel'], ['ne_sait_pas', 'Je ne sais pas']] },
-            { k: 'eaux_pluviales', label: 'Eaux de pluie du projet', type: 'choix', requis: true, ouvrages: [...ACCOLABLE, 'piscine'],
+            { k: 'assainissement', label: 'Assainissement', type: 'choix', requis: true, ouvrages: ['extension'], options: [['collectif', "Tout-à-l'égout"], ['individuel', 'Fosse / assainissement individuel'], ['ne_sait_pas', 'Je ne sais pas']] },
+            { k: 'eaux_pluviales', label: 'Eaux de pluie du projet', type: 'choix', ouvrages: [...ACCOLABLE, 'piscine'],
               options: [['reseau', 'Raccordées au réseau existant'], ['infiltration', 'Infiltrées sur le terrain'], ['cuve', 'Récupérées dans une cuve']] },
             { k: 'facades_inaccessibles', label: 'Façades impossibles à photographier', type: 'texte',
               aide: 'Ex. : « gauche » si la maison est collée au voisin. Laissez vide sinon.' },
@@ -217,7 +205,6 @@ export function validerFiche(ouvrage: string, brut: Record<string, unknown>): { 
             fiche[c.k] = v;
         } else fiche[c.k] = String(v).trim().slice(0, 300);
     }
-    if (typeof fiche.hauteur_egout_m === 'number' && typeof fiche.hauteur_max_m === 'number' && fiche.hauteur_egout_m > fiche.hauteur_max_m) erreurs.hauteur_egout_m = 'superieure';
     if (typeof fiche.maison_gouttiere_m === 'number' && typeof fiche.maison_faitage_m === 'number' && fiche.maison_gouttiere_m > fiche.maison_faitage_m) erreurs.maison_gouttiere_m = 'superieure';
     return { fiche, erreurs };
 }
@@ -230,10 +217,12 @@ export function ficheManquants(ouvrage: string, fiche: Record<string, unknown> |
 export const FICHE_LIBELLE = 'Fiche technique du projet (mesures, implantation, maison existante)';
 
 // Façades à photographier : les 4, sauf celles déclarées inaccessibles.
+// La façade concernée par les travaux est déjà la photo « façade » de la commande, et sert aussi de vue de près (DP7).
 export function facadesAttendues(fiche: Record<string, unknown> | null): string[] {
     const inacc = String(fiche?.facades_inaccessibles ?? '').toLowerCase();
-    return ['facade_avant', 'facade_arriere', 'facade_gauche', 'facade_droite', 'photo_emplacement']
-        .filter(k => !(k.startsWith('facade_') && inacc.includes(k.slice(7).replace('arriere', 'arri'))));
+    const deja = fiche?.implantation === 'accole' ? `facade_${fiche?.facade_accroche}` : '';
+    return ['facade_avant', 'facade_arriere', 'facade_gauche', 'facade_droite']
+        .filter(k => k !== deja && !inacc.includes(k.slice(7).replace('arriere', 'arri')));
 }
 
 export const CORS = {

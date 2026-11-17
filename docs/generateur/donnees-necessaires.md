@@ -78,3 +78,10 @@ sur la page de suivi, et le dossier ne démarre pas tant que ce n'est pas comple
 
 Reste à faire : brancher `generateur/dossier.py` sur `orders.fiche_technique` + cadastre, puis
 l'envoi automatique au relecteur.
+
+### Fiche allégée (17 nov. 2026, soir)
+Retirés : hauteur max (déjà dans la commande), 3e ouverture, section matériaux (déjà dans la commande).
+Maison : niveaux + toiture + aspect en texte ; hauteurs facultatives (estimées d'après les niveaux et
+signalées au relecteur). Surface du terrain et eaux pluviales facultatives ; assainissement seulement
+pour une extension. Champs obligatoires : 11 (pergola, abri, carport), 12 (véranda, piscine),
+13 (extension), 8 (clôture, solaire). Les champs facultatifs sont repliés sur /suivi.

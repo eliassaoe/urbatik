@@ -212,6 +212,15 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
       const h = document.createElement("h3"); h.textContent = sec.titre; body.appendChild(h);
       if (sec.aide) { const p = document.createElement("p"); p.className = "muted small aide"; p.textContent = sec.aide; body.appendChild(p); }
       const grid = document.createElement("div"); grid.className = "champs"; body.appendChild(grid);
+      const opt = champs.filter(c => !c.requis);
+      let gridOpt = null;
+      if (opt.length && champs.some(c => c.requis)) {
+        const det = document.createElement("details"); det.style.marginTop = "8px";
+        if (opt.some(c => f[c.k] !== undefined && f[c.k] !== "")) det.open = true;
+        const sm = document.createElement("summary"); sm.className = "muted small"; sm.style.cursor = "pointer"; sm.textContent = "Précisions facultatives (" + opt.length + ")";
+        gridOpt = document.createElement("div"); gridOpt.className = "champs"; gridOpt.style.marginTop = "8px";
+        det.append(sm, gridOpt); body.appendChild(det);
+      }
       champs.forEach(c => {
         const l = document.createElement("label"); l.className = "f"; l.dataset.k = c.k;
         const t = document.createElement("span"); t.textContent = c.label; l.appendChild(t);
@@ -231,7 +240,7 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
         if (c.unite) { const w = document.createElement("span"); w.className = "u"; w.appendChild(input); const em = document.createElement("em"); em.textContent = c.unite; w.appendChild(em); l.appendChild(w); }
         else l.appendChild(input);
         if (c.aide && c.type !== "texte") { const a = document.createElement("span"); a.className = "muted small"; a.textContent = c.aide; l.appendChild(a); }
-        grid.appendChild(l);
+        (gridOpt && !c.requis ? gridOpt : grid).appendChild(l);
       });
     });
   }

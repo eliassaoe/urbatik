@@ -51,8 +51,39 @@ def projet_contour(maison, imp, larg, prof):
     mid = mul(add(a, b), 0.5)
     if (n[0] * (c[0] - mid[0]) + n[1] * (c[1] - mid[1])) > 0: n = (u[1], -u[0])  # vers l'extérieur
     p0 = add(a, mul(u, imp.get("decalage", 0)))
+    if imp.get("isole"): p0 = add(p0, mul(n, imp["isole"]))   # ouvrage isolé : décollé de la maison
     p1 = add(p0, mul(u, prof)); p2 = add(p1, mul(n, larg)); p3 = add(p0, mul(n, larg))
     return [p0, p1, p2, p3], u, n
+
+
+def normale_ext(poly_, a, b):
+    nv = unit((b[1] - a[1], -(b[0] - a[0]))); c = centroid(poly_)
+    return mul(nv, -1) if (nv[0] * (c[0] - a[0]) + nv[1] * (c[1] - a[1])) > 0 else nv
+
+
+def route_arete(d): return min(edges(d["parcelle"]), key=lambda s: seg_dist(d["point_adresse"], *s))
+
+
+def noms_facades(d):
+    """Avant = côté rue ; gauche / droite vues depuis la rue (comme le client les décrit)."""
+    mai = d["maison"]["contour"]; c = centroid(mai)
+    r = route_arete(d); n_rue = unit(sub(mul(add(*r), 0.5), c))
+    f = mul(n_rue, -1); gauche = (-f[1], f[0])
+    out = {}
+    for i, (a, b) in enumerate(edges(mai)):
+        nv = normale_ext(mai, a, b); dp = nv[0] * n_rue[0] + nv[1] * n_rue[1]
+        out[i] = "avant" if dp > 0.7 else "arriere" if dp < -0.7 else ("gauche" if nv[0] * gauche[0] + nv[1] * gauche[1] > 0 else "droite")
+    return out
+
+
+def fleche(page, a, b, label, color=(0.75, 0.1, 0.1)):
+    page.draw_line(a, b, color=color, width=1.6)
+    v = (b.x - a.x, b.y - a.y); L = math.hypot(*v) or 1; u_ = (v[0] / L, v[1] / L)
+    p1 = pymupdf.Point(b.x - u_[0] * 9 - u_[1] * 5, b.y - u_[1] * 9 + u_[0] * 5)
+    p2 = pymupdf.Point(b.x - u_[0] * 9 + u_[1] * 5, b.y - u_[1] * 9 - u_[0] * 5)
+    poly(page, [b, p1, p2], color=color, fill=color, width=0.5)
+    page.draw_circle(a, 11, color=color, fill=(1, 1, 1), width=1.2)
+    txt(page, (a.x, a.y + 3), label, 6.5, BOLD, color, align="center")
 
 
 def orientation(v):
@@ -217,9 +248,31 @@ def dp1(doc, d):
     txt(pg, (60, 85), "a  EXTRAIT CADASTRAL", 11, BOLD)
     txt(pg, (60, 100), f"Section {d['cadastre']['section']} · parcelle {d['cadastre']['numero']} · {d['commune']}", 8.5)
     fleche_nord(pg, (585, 110), 0)
-    a_faire(pg, (680, 300), "Vue aérienne IGN (orthophoto) : récupérée par le serveur en production.")
+    img = ortho(d, c, 75)
+    zone = pymupdf.Rect(660, 110, 1150, 600)
+    if img:
+        pg.insert_image(zone, stream=img)
+        va = Vue(c, ((zone.x0 + zone.x1) / 2, (zone.y0 + zone.y1) / 2), 150 * 100 / (zone.width / PT_PER_M_100), 0)
+        poly(pg, [va(p) for p in d["parcelle"]], color=RED, width=2)
+        fleche_nord(pg, (zone.x1 - 30, zone.y0 + 30), 0)
+    else:
+        a_faire(pg, (680, 300), "Vue aérienne IGN : non récupérée (pas d'accès réseau ici).")
     txt(pg, (680, 280), "b  VUE AERIENNE", 11, BOLD)
     cartouche(pg, "PLAN DE SITUATION", "1000", "DP 1")
+
+
+def ortho(d, c, demi):
+    """Orthophoto IGN (Géoplateforme, WMS public) autour du point c, demi-côté en mètres."""
+    import urllib.request
+    ox, oy = d["origin"]
+    bbox = f"{ox + c[0] - demi},{oy + c[1] - demi},{ox + c[0] + demi},{oy + c[1] + demi}"
+    url = ("https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=ORTHOIMAGERY.ORTHOPHOTOS"
+           f"&STYLES=&CRS=EPSG:2154&BBOX={bbox}&WIDTH=1000&HEIGHT=1000&FORMAT=image/jpeg")
+    try:
+        r = urllib.request.urlopen(url, timeout=20).read()
+        return r if r[:2] == b"\xff\xd8" else None
+    except Exception:
+        return None
 
 
 def plan_masse(doc, d, apres):
@@ -230,6 +283,8 @@ def plan_masse(doc, d, apres):
     e = max(edges(mai), key=lambda s: dist(*s))
     ang = math.pi / 2 - math.atan2(e[1][1] - e[0][1], e[1][0] - e[0][0])
     par = d["parcelle"]; c = centroid(par)
+    rm0 = mul(add(*route_arete(d)), 0.5)                 # la rue toujours à droite du plan
+    if Vue(c, (0, 0), 100, ang)(rm0).x < 0: ang += math.pi
     v = Vue(c, (440, 400), 100, ang)       # centrer sur l'emprise de la parcelle, pas sur la moyenne des sommets
     xs, ys = [v(q).x for q in par], [v(q).y for q in par]
     v = Vue(c, (440 - ((min(xs) + max(xs)) / 2 - 440), 400 - ((min(ys) + max(ys)) / 2 - 400)), 100, ang)
@@ -291,15 +346,46 @@ def plan_masse(doc, d, apres):
     pg.insert_text(st, d["voie"].upper(), fontsize=10, fontname=BOLD, morph=(st, pymupdf.Matrix(ra)))
     # légende, nord, échelle
     lx, ly = 880, 60
-    pg.draw_rect(pymupdf.Rect(lx, ly, 1160, ly + 70), color=(0, 0, 0), width=0.5)
+    pg.draw_rect(pymupdf.Rect(lx, ly, 1160, ly + 128), color=(0, 0, 0), width=0.5)
     txt(pg, (lx + 8, ly + 14), "Légende :", 8, BOLD)
     for i, (col, lab) in enumerate([(GREEN, "Espace vert"), (ROOF, "Bâti existant"), (DARK, "Projet")]):
         pg.draw_rect(pymupdf.Rect(lx + 10, ly + 22 + i * 15, lx + 40, ly + 31 + i * 15), color=None, fill=col)
         txt(pg, (lx + 48, ly + 30 + i * 15), f": {lab}", 8)
     fleche_nord(pg, (80, 90), ang)
     echelle_graphique(pg, 80, 735, PT_PER_M_100 * 100 / ech)
-    a_faire(pg, (750, 150), "Réseaux (EP, EU, eau, électricité) et flèches photos DP7/DP8.")
+    lx, ly = 880, 60
+    # réseaux existants : tracé indicatif de la façade côté rue jusqu'à la voie
+    route = route_arete(d); noms = noms_facades(d)
+    av = [e for i, e in enumerate(edges(mai)) if noms[i] == "avant"] or [min(edges(mai), key=lambda e: seg_dist(mul(add(*e), 0.5), *route))]
+    ma = mul(add(*av[0]), 0.5); ua = unit(sub(av[0][1], av[0][0]))
+    reseaux = [("EU", BROWN, None), ("EP", (0.2, 0.4, 0.85), "[5 3] 0"), ("AEP", (0.2, 0.4, 0.85), None), ("ELEC", RED, "[5 3] 0")]
+    for i_, (lab, col, dash) in enumerate(reseaux):
+        o_ = add(ma, mul(ua, (i_ - 1.5) * 0.8))
+        rb = sub(route[1], route[0]); t_ = ((o_[0]-route[0][0])*rb[0] + (o_[1]-route[0][1])*rb[1]) / (rb[0]**2 + rb[1]**2)
+        pied = add(route[0], mul(rb, max(0, min(1, t_))))
+        pg.draw_line(v(o_), v(pied), color=col, width=1, dashes=dash)
+        mid = v(mul(add(o_, pied), 0.5)); txt(pg, (mid.x + 3, mid.y), lab, 6, color=col)
+    # flèches de prise de vue des photos
+    rm_ = mul(add(*route), 0.5); dir_rue = unit(sub(rm_, centroid(mai)))
+    fleche(pg, v(add(rm_, mul(dir_rue, 2.5))), v(add(rm_, mul(dir_rue, -3))), "DP8")
+    cp_ = centroid(pc)
+    fleche(pg, v(add(cp_, mul(n, 5.5))), v(add(cp_, mul(n, 2.6))), "DP7")
+    for i_, (lab, col, dash) in enumerate(reseaux):
+        yy = ly + 80 + i_ * 13
+        pg.draw_line(pymupdf.Point(lx + 10, yy - 3), pymupdf.Point(lx + 40, yy - 3), color=col, width=1, dashes=dash)
+        txt(pg, (lx + 48, yy), f": {dict(EU='Eaux usées', EP='Eaux pluviales', AEP='Eau potable', ELEC='Électricité')[lab]} (tracé indicatif)", 7.5)
     cartouche(pg, "PLAN DE MASSE " + ("APRES" if apres else "AVANT"), str(ech), "DP 2")
+
+
+def profil_projet(p, x0, x1, sol, k, haut_cote_gauche=False):
+    """Contour du projet vu de côté : toit plat, une pente (haut côté maison) ou deux pentes."""
+    h = p["hauteur"]; e = p.get("hauteur_egout") or h
+    if p.get("toit") == "une_pente":
+        hg, hd = (h, e) if haut_cote_gauche else (e, h)
+        return [(x0, sol), (x0, sol - hg * k), (x1, sol - hd * k), (x1, sol)]
+    if p.get("toit") == "deux_pentes":
+        return [(x0, sol), (x0, sol - e * k), ((x0 + x1) / 2, sol - h * k), (x1, sol - e * k), (x1, sol)]
+    return [(x0, sol), (x0, sol - h * k), (x1, sol - h * k), (x1, sol)]
 
 
 def coupe(doc, d):
@@ -321,17 +407,19 @@ def coupe(doc, d):
         poly(pg, [pymupdf.Point(*q) for q in pts], fill=(0.93, 0.93, 0.9), width=1)
         txt(pg, (mx + larg_maison * k + 8, sol - f * k + 4), niv(f), 8); txt(pg, (mx + larg_maison * k + 8, sol - g * k + 4), niv(g), 8)
         txt(pg, (mx + larg_maison * k / 2, sol - g * k / 2), "MAISON EXISTANTE", 7.5, align="center")
-        # projet contre la maison
-        px = mx - p["largeur"] * k
+        # projet contre la maison, ou à sa distance s'il est isolé
+        gap = float(p["implantation"].get("isole") or 0)
+        px1 = mx - gap * k; px = px1 - p["largeur"] * k
         if apres:
-            pg.draw_rect(pymupdf.Rect(px, sol - p["hauteur"] * k, mx, sol), color=(0, 0, 0), fill=(0.55, 0.55, 0.55), width=1)
+            poly(pg, [pymupdf.Point(*q) for q in profil_projet(p, px, px1, sol, k)], fill=(0.55, 0.55, 0.55), width=1)
             txt(pg, (px - 52, sol - p["hauteur"] * k + 4), niv(p["hauteur"]), 8)
-            cote(pg, pymupdf.Point(px, sol), pymupdf.Point(mx, sol), m(p["largeur"]), off=-22)
+            cote(pg, pymupdf.Point(px, sol), pymupdf.Point(px1, sol), m(p["largeur"]), off=-22)
+            if gap: cote(pg, pymupdf.Point(px1, sol), pymupdf.Point(mx, sol), m(gap), off=-22)
             note_projet(pg, d, 870, 600, 290)
         else:
-            pg.draw_rect(pymupdf.Rect(px, sol - p["hauteur"] * k, mx, sol), color=RED, width=1, dashes="[4 3] 0")
-            txt(pg, ((px + mx) / 2, sol - p["hauteur"] * k - 6), "EMPLACEMENT PROJET", 7, BOLD, RED, align="center")
-        txt(pg, (70, sol - 4), "TN ±0.00", 8)
+            pg.draw_rect(pymupdf.Rect(px, sol - p["hauteur"] * k, px1, sol), color=RED, width=1, dashes="[4 3] 0")
+            txt(pg, ((px + px1) / 2, sol - p["hauteur"] * k - 6), "EMPLACEMENT PROJET", 7, BOLD, RED, align="center")
+        txt(pg, (70, sol + 12), "TN ±0.00", 8)
         # limites de propriété de part et d'autre, à leur vraie distance
         par = d["parcelle"]
         dir_out = n                                    # du mur de la maison vers l'extérieur, côté projet
@@ -344,16 +432,16 @@ def coupe(doc, d):
                 ss = ((e1[0] - o[0]) * dv[1] - (e1[1] - o[1]) * dv[0]) / den
                 if tt > 0 and 0 <= ss <= 1: best = tt if best is None else min(best, tt)
             return best or 0
-        mid_a = mul(add(pc[0], pc[1]), 0.5)
+        mid_a = add(mul(add(pc[0], pc[1]), 0.5), mul(dir_out, -gap))   # sur le mur de la maison
         g_lim = jusqu_a_limite(mid_a, dir_out); d_lim = jusqu_a_limite(add(mid_a, mul(dir_out, -larg_maison)), mul(dir_out, -1))
         for xl, lab in ((mx - g_lim * k, "Limite de propriété"), (mx + larg_maison * k + d_lim * k, "Limite de propriété")):
             pg.draw_line(pymupdf.Point(xl, sol + 10), pymupdf.Point(xl, sol - 130), color=(0, 0, 0), width=0.8, dashes="[6 2 1 2] 0")
             txt(pg, (xl + 3, sol - 120), lab, 7, rot=0)
-        if g_lim > p["largeur"] + 0.05:
-            cote(pg, pymupdf.Point(mx - g_lim * k, sol), pymupdf.Point(mx - p["largeur"] * k, sol), m(g_lim - p["largeur"]), off=-22)
+        if g_lim > p["largeur"] + gap + 0.05:
+            cote(pg, pymupdf.Point(mx - g_lim * k, sol), pymupdf.Point(px, sol), m(g_lim - p["largeur"] - gap), off=-22)
         cote(pg, pymupdf.Point(mx + larg_maison * k, sol), pymupdf.Point(mx + larg_maison * k + d_lim * k, sol), m(d_lim), off=-22)
         txt(pg, (60, y0 - 250), ("b  COUPE : APRES PROJET" if apres else "a  COUPE : AVANT PROJET"), 10, BOLD)
-    txt(pg, (870, 590), f"Toiture maison : {mm['toiture']} · façade : {mm['facade']}", 7.5)
+    txt(pg, (870, 585), f"Toiture maison : {mm['toiture']} · façade : {mm['facade']}", 7.5)
     echelle_graphique(pg, 80, 735, k)
     cartouche(pg, "COUPE", "100", "DP 3")
 
@@ -363,9 +451,10 @@ def facades(doc, d):
     mai = d["maison"]["contour"]; p = d["projet"]; mm = d["maison"]
     pc, u, n = projet_contour(mai, p["implantation"], p["largeur"], p["profondeur"])
     k = PT_PER_M_100; c = centroid(mai)
-    for a, b in edges(mai):
-        nv = unit((b[1] - a[1], -(b[0] - a[0])))
-        if (nv[0] * (c[0] - a[0]) + nv[1] * (c[1] - a[1])) > 0: nv = mul(nv, -1)
+    noms = noms_facades(d)
+    for ia, (a, b) in enumerate(edges(mai)):
+        nv = normale_ext(mai, a, b)
+        existantes = mm.get("ouvertures", {}).get(noms[ia], [])
         t = unit(sub(b, a)); t = (-nv[1], nv[0])     # axe horizontal vu de l'extérieur (gauche -> droite)
         proj = lambda q: q[0] * t[0] + q[1] * t[1]
         hx = [proj(q) for q in mai]; px = [proj(q) for q in pc]
@@ -387,13 +476,22 @@ def facades(doc, d):
             if not pignon:   # pan de toiture vu de face, au-dessus de la gouttière
                 pg.draw_rect(pymupdf.Rect(X(h0), sol - f * k, X(h1), sol - g * k), color=(0, 0, 0), fill=(0.66, 0.4, 0.32), width=1)
             pg.draw_line(pymupdf.Point(ox - 20, sol), pymupdf.Point(ox + 460, sol), width=1)
+            mur0 = min(proj(a), proj(b))                     # bord gauche du mur, vu de l'extérieur
+            for o in existantes:                             # portes et fenêtres lues sur la photo
+                rr = pymupdf.Rect(X(mur0 + o["x0"]), sol - o["haut"] * k, X(mur0 + o["x1"]), sol - o["bas"] * k)
+                vitre = o["type"] in ("fenetre", "porte_fenetre", "baie")
+                pg.draw_rect(rr, color=(0.2, 0.2, 0.2), fill=(0.78, 0.86, 0.93) if vitre else (0.62, 0.45, 0.3), width=0.8)
+                if vitre and rr.width > 8: pg.draw_line(pymupdf.Point(rr.x0 + rr.width / 2, rr.y0), pymupdf.Point(rr.x0 + rr.width / 2, rr.y1), width=0.4)
+                if o.get("volets"):
+                    for x_ in (rr.x0 - rr.width / 2, rr.x1):
+                        pg.draw_rect(pymupdf.Rect(x_, rr.y0, x_ + rr.width / 2, rr.y1), color=(0.2, 0.2, 0.2), fill=(0.9, 0.9, 0.88), width=0.5)
             p0, p1 = min(px), max(px)
             recouvre = max(0, min(p1, h1) - max(p0, h0)) > 0.3   # le projet passe derrière la maison
             devant = sum(nv[0] * (q[0] - a[0]) + nv[1] * (q[1] - a[1]) for q in pc) / 4 > -0.05 or not recouvre
             r = pymupdf.Rect(X(p0), sol - p["hauteur"] * k, X(p1), sol)
             if apres:
-                pg.draw_rect(r, color=(0, 0, 0), fill=(0.83, 0.78, 0.66) if devant else None, width=1,
-                             dashes=None if devant else "[3 2] 0")
+                prof_pts = [pymupdf.Point(*q) for q in profil_projet(p, r.x0, r.x1, sol, k, haut_cote_gauche=(r.x0 + r.x1) / 2 > (X(h0) + X(h1)) / 2)]
+                poly(pg, prof_pts, fill=(0.83, 0.78, 0.66) if devant else None, width=1, dashes=None if devant else "[3 2] 0")
                 for yy in range(int(r.y0) + 6, int(r.y1), 6):
                     if devant: pg.draw_line(pymupdf.Point(r.x0, yy), pymupdf.Point(r.x1, yy), color=(0.6, 0.55, 0.45), width=0.3)
                 for o in p.get("ouvertures", []):
@@ -407,10 +505,25 @@ def facades(doc, d):
             txt(pg, (X(h1) + 6, sol - f * k + 4), niv(f), 7.5); txt(pg, (X(h1) + 6, sol - g * k + 4), niv(g), 7.5)
             txt(pg, (X(h1) + 6, sol + 4), "±0.00m", 7.5)
             txt(pg, (ox, 120), f"{'b' if apres else 'a'}  FACADE {nom} : {'APRES' if apres else 'AVANT'} PROJET", 10, BOLD)
+            txt(pg, (ox, 134), f"(façade {noms[ia].replace('arriere', 'arrière')} vue depuis la rue)" if noms[ia] in ("gauche", "droite") else f"(façade {noms[ia].replace('arriere', 'arrière')})", 8, color=GREY)
         note_projet(pg, d, 870, 600, 290)
         txt(pg, (870, 590), f"Maison : toiture {mm['toiture']}, {mm['facade']}", 7.5)
         echelle_graphique(pg, 80, 735, k)
         cartouche(pg, "FACADES", "100", "DP 4")
+
+
+def volume_projet(p, pc, L):
+    """Faces 3D du projet : toit plat, une pente (haut côté maison) ou deux pentes (faîtage dans la longueur)."""
+    h = p["hauteur"]; e = p.get("hauteur_egout") or h
+    q = [L(x) for x in pc]                    # q0-q1 le long de la maison, q3-q2 côté extérieur
+    if p.get("toit") == "deux_pentes":
+        m0, m1 = mul(add(q[0], q[3]), 0.5), mul(add(q[1], q[2]), 0.5)
+        murs = [[(*q[i], 0), (*q[(i + 1) % 4], 0), (*q[(i + 1) % 4], e), (*q[i], e)] for i in range(4)]
+        return murs + [[(*q[0], e), (*q[1], e), (*m1, h), (*m0, h)], [(*q[3], e), (*q[2], e), (*m1, h), (*m0, h)],
+                       [(*q[1], e), (*q[2], e), (*m1, h)], [(*q[3], e), (*q[0], e), (*m0, h)]]
+    z = [h, h, e, e] if p.get("toit") == "une_pente" else [h] * 4
+    murs = [[(*q[i], 0), (*q[(i + 1) % 4], 0), (*q[(i + 1) % 4], z[(i + 1) % 4]), (*q[i], z[i])] for i in range(4)]
+    return murs + [[(*q[i], z[i]) for i in range(4)]]
 
 
 def vues_3d(doc, d, tmp):
@@ -439,8 +552,9 @@ def vues_3d(doc, d, tmp):
         ax.add_collection3d(Poly3DCollection(toit, facecolors=(0.62, 0.36, 0.28), edgecolors="k", linewidths=0.6))
         pl = [L(q) for q in d["parcelle"]] + [L(d["parcelle"][0])]
         ax.plot([q[0] for q in pl], [q[1] for q in pl], [0] * len(pl), color=(0.8, 0.1, 0.1), lw=1.4)
-        ax.add_collection3d(Poly3DCollection(boite(pc, p["hauteur"]), facecolors=(0.86, 0.80, 0.66), edgecolors="k", linewidths=0.7))
-        R = 11; ax.set_xlim(-R, R); ax.set_ylim(-R, R); ax.set_zlim(0, R)
+        ax.add_collection3d(Poly3DCollection(volume_projet(p, pc, L), facecolors=(0.86, 0.80, 0.66), edgecolors="k", linewidths=0.7))
+        R = max(11, max(abs(v) for q in mai + pc for v in L(q)) + 1.5)
+        ax.set_xlim(-R, R); ax.set_ylim(-R, R); ax.set_zlim(0, R)
         ax.set_box_aspect((1, 1, 0.5)); ax.view_init(el, az); ax.set_axis_off()
         fn = os.path.join(tmp, f"3d_{i}.png"); fig.savefig(fn, bbox_inches="tight", transparent=True); plt.close(fig); out.append(fn)
     pg = doc.new_page(width=W, height=H)
