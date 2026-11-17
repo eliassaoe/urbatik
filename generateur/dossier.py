@@ -332,14 +332,23 @@ def plan_masse(doc, d, apres):
     else:
         poly(pg, pp, color=RED, width=1, dashes="[4 3] 0")
         cp = v(centroid(pc)); txt(pg, (cp.x, cp.y), "EMPLACEMENT PROJET", 6.5, BOLD, RED, align="center")
-    # distances du projet aux limites
+    # distances aux limites : du projet (jusqu'à 6 m, « EN LIMITE » si collé) et de la maison (jusqu'à 15 m)
+    def pied(q, a, b):
+        ab = sub(b, a); t = ((q[0]-a[0])*ab[0] + (q[1]-a[1])*ab[1]) / (ab[0]**2 + ab[1]**2)
+        return add(a, mul(ab, max(0, min(1, t))))
     for a, b in edges(par):
+        if dist(a, b) < 2: continue
         dd = poly_dist_to_edge(pc, a, b)
+        q = min(pc, key=lambda q: seg_dist(q, a, b))
         if 0.3 < dd < 6:
-            q = min(pc, key=lambda q: seg_dist(q, a, b))
-            ab = sub(b, a); t = ((q[0]-a[0])*ab[0] + (q[1]-a[1])*ab[1]) / (ab[0]**2 + ab[1]**2)
-            foot = add(a, mul(ab, max(0, min(1, t))))
-            cote(pg, v(q), v(foot), m(dd), off=0)
+            cote(pg, v(q), v(pied(q, a, b)), m(dd), off=0)
+        elif dd <= 0.3 and apres:
+            qq = v(mul(add(*sorted(pc, key=lambda q: seg_dist(q, a, b))[:2]), 0.5))
+            txt(pg, (qq.x, qq.y - 4), "EN LIMITE", 6.5, BOLD, RED, align="center")
+        dm = poly_dist_to_edge(mai, a, b)
+        if 0.3 < dm < 15 and abs(dm - dd) > 0.5:
+            qm = min(mai, key=lambda q: seg_dist(q, a, b))
+            cote(pg, v(qm), v(pied(qm, a, b)), m(dm), off=0)
     # voie
     route = min(edges(par), key=lambda s: seg_dist(d["point_adresse"], *s))
     rm = v(add(mul(add(*route), 0.5), mul(unit(sub(mul(add(*route), 0.5), c)), 2.2)))
@@ -599,21 +608,72 @@ def vues_3d(doc, d, tmp):
     murs = boite(mai, g)[:4]
     toit = [[(*L(a1), g), (*L(b1), g), (*L(r2), f), (*L(r1), f)], [(*L(a2), g), (*L(b2), g), (*L(r1), f), (*L(r2), f)]]
     pignons = [[(*L(b1), g), (*L(a2), g), (*L(r2), f)], [(*L(b2), g), (*L(a1), g), (*L(r1), f)]]
+    # Tout est trié à la main (peintre) : murs, toits, projet et menuiseries, pour que les fenêtres restent sur leur mur.
+    noms = noms_facades(d); faces = []          # (polygone 3D, couleur, mur parent ou None, normale)
+    def nrm(poly3):
+        (x0, y0, z0), (x1, y1, z1), (x2, y2, z2) = poly3[0], poly3[1], poly3[2]
+        ux, uy, uz = x1 - x0, y1 - y0, z1 - z0; vx, vy, vz = x2 - x0, y2 - y0, z2 - z0
+        nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx; l_ = math.sqrt(nx * nx + ny * ny + nz * nz) or 1
+        return (nx / l_, ny / l_, nz / l_)
+    def ext(poly3, centre):                      # normale tournée vers l'extérieur du volume
+        nn = nrm(poly3); cx = sum(q[0] for q in poly3) / len(poly3); cy = sum(q[1] for q in poly3) / len(poly3)
+        return nn if nn[0] * (cx - centre[0]) + nn[1] * (cy - centre[1]) + nn[2] * 0.001 >= 0 else (-nn[0], -nn[1], -nn[2])
+    cm = L(centroid(mai)); cpj = L(centroid(pc))
+    for w in murs + pignons: faces.append((w, (0.95, 0.92, 0.82), None, ext(w, cm)))
+    for t_ in toit: faces.append((t_, (0.66, 0.38, 0.29), None, (0, 0, 1)))
+    vp = volume_projet(p, pc, L)
+    for w in vp:
+        nn = ext(w, cpj) if abs(nrm(w)[2]) < 0.9 else (0, 0, 1)
+        faces.append((w, (0.86, 0.80, 0.66) if abs(nn[2]) < 0.9 else (0.3, 0.3, 0.32) if p.get("toit") == "plat" else (0.66, 0.38, 0.29), None, nn))
+    # menuiseries de la maison, posées 3 cm devant leur mur
+    for ia, (a, b) in enumerate(edges(mai)):
+        nv = normale_ext(mai, a, b); t = (-nv[1], nv[0])
+        gauche = a if a[0] * t[0] + a[1] * t[1] < b[0] * t[0] + b[1] * t[1] else b
+        for o in mm.get("ouvertures", {}).get(noms[ia], []):
+            q0 = add(add(gauche, mul(t, o["x0"])), mul(nv, 0.03)); q1 = add(add(gauche, mul(t, o["x1"])), mul(nv, 0.03))
+            col = (0.62, 0.74, 0.84) if o["type"] in ("fenetre", "porte_fenetre", "baie") else (0.97, 0.97, 0.95)
+            faces.append(([(*L(q0), o["bas"]), (*L(q1), o["bas"]), (*L(q1), o["haut"]), (*L(q0), o["haut"])], col, ia, (nv[0], nv[1], 0)))
+    # ouvertures du projet sur sa face extérieure
+    fa, fb = pc[3], pc[2]; uo = unit(sub(fb, fa)); no = n
+    for o in p.get("ouvertures", []):
+        if not o.get("largeur"): continue
+        m0 = mul(add(fa, fb), 0.5)
+        q0 = add(add(m0, mul(uo, -o["largeur"] / 2)), mul(no, 0.03)); q1 = add(add(m0, mul(uo, o["largeur"] / 2)), mul(no, 0.03))
+        faces.append(([(*L(q0), 0), (*L(q1), 0), (*L(q1), o["hauteur"]), (*L(q0), o["hauteur"])], (0.22, 0.22, 0.22), "projet", (no[0], no[1], 0)))
+    soleil = (-0.45, -0.6, 0.66)
     out = []
     for i, (az, el) in enumerate([(-35, 30), (145, 30)]):
-        fig = plt.figure(figsize=(7, 5), dpi=130); ax = fig.add_subplot(projection="3d")
-        ax.add_collection3d(Poly3DCollection(murs + pignons, facecolors=(0.95, 0.92, 0.82), edgecolors="k", linewidths=0.6))
-        ax.add_collection3d(Poly3DCollection(toit, facecolors=(0.62, 0.36, 0.28), edgecolors="k", linewidths=0.6))
-        pl = [L(q) for q in d["parcelle"]] + [L(d["parcelle"][0])]
-        ax.plot([q[0] for q in pl], [q[1] for q in pl], [0] * len(pl), color=(0.8, 0.1, 0.1), lw=1.4)
-        ax.add_collection3d(Poly3DCollection(volume_projet(p, pc, L), facecolors=(0.86, 0.80, 0.66), edgecolors="k", linewidths=0.7))
-        R = max(11, max(abs(v) for q in mai + pc for v in L(q)) + 1.5)
+        cam = (math.cos(math.radians(el)) * math.cos(math.radians(az)), math.cos(math.radians(el)) * math.sin(math.radians(az)), math.sin(math.radians(el)))
+        fig = plt.figure(figsize=(8, 5.6), dpi=150); ax = fig.add_subplot(projection="3d"); ax.computed_zorder = False
+        pl = [L(q) for q in d["parcelle"]]
+        Rs = max(7, max(abs(v) for q in mai + pc for v in L(q)) + 1)
+        pl = [(max(-Rs, min(Rs, x)), max(-Rs, min(Rs, y))) for x, y in pl]          # terrain coupé au cadre
+        ax.add_collection3d(Poly3DCollection([[(x, y, 0) for x, y in pl]], facecolors=(0.84, 0.92, 0.80), edgecolors=(0.8, 0.1, 0.1), linewidths=1.4))
+        def prof(fc):
+            poly3, _, parent, _ = fc
+            cx = sum(q[0] for q in poly3) / len(poly3); cy = sum(q[1] for q in poly3) / len(poly3); cz = sum(q[2] for q in poly3) / len(poly3)
+            return cx * cam[0] + cy * cam[1] + cz * cam[2]
+        murs_prof = {}
+        for fc in faces:
+            if fc[2] is None: pass
+        visibles = []
+        for k_, fc in enumerate(faces):
+            poly3, col, parent, nn = fc
+            if parent is not None and nn[0] * cam[0] + nn[1] * cam[1] + nn[2] * cam[2] <= 0: continue   # menuiserie d'un mur caché
+            if parent is None: dpt = prof(fc)
+            elif parent == "projet": dpt = max(prof((w, None, None, None)) for w in vp if abs(nrm(w)[2]) < 0.9 and abs(ext(w, cpj)[0] * no[0] + ext(w, cpj)[1] * no[1]) > 0.9) + 0.01
+            else: dpt = prof((murs[parent], None, None, None)) + 0.01
+            ombre = 0.72 + 0.28 * max(0, nn[0] * soleil[0] + nn[1] * soleil[1] + nn[2] * soleil[2])
+            visibles.append((dpt, poly3, tuple(min(1, c_ * ombre) for c_ in col), parent))
+        for dpt, poly3, col, parent in sorted(visibles, key=lambda x: x[0]):
+            ax.add_collection3d(Poly3DCollection([poly3], facecolors=col, edgecolors=(0.15, 0.15, 0.15), linewidths=0.4 if parent is not None else 0.7))
+        R = max(7, max(abs(v) for q in mai + pc for v in L(q)) + 1)
         ax.set_xlim(-R, R); ax.set_ylim(-R, R); ax.set_zlim(0, R)
-        ax.set_box_aspect((1, 1, 0.5)); ax.view_init(el, az); ax.set_axis_off()
+        ax.set_box_aspect((1, 1, 0.5), zoom=1.6); ax.view_init(el, az); ax.set_axis_off(); ax.set_position([0, 0, 1, 1])
         fn = os.path.join(tmp, f"3d_{i}.png"); fig.savefig(fn, bbox_inches="tight", transparent=True); plt.close(fig); out.append(fn)
     pg = doc.new_page(width=W, height=H)
     pg.insert_image(pymupdf.Rect(40, 80, 580, 700), filename=out[0]); pg.insert_image(pymupdf.Rect(600, 80, 1140, 700), filename=out[1])
-    txt(pg, (60, 70), "VUES 3D (volumes)", 11, BOLD)
+    txt(pg, (60, 70), "VUES 3D", 11, BOLD); txt(pg, (60, 84), "Volumes à l'échelle, d'après le cadastre et les mesures de la fiche", 8, color=GREY)
     cartouche(pg, "VUES 3D", "---", "DP 5")
 
 
