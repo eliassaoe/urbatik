@@ -5,6 +5,7 @@
 //   {action:'commande', generation_id, token}           → la commande, la fiche, les photos (liens 1 h)
 //   {action:'vision', generation_id, token, kind}       → portes et fenêtres lues sur une photo de façade
 //   {action:'photomontage', generation_id, token, prompt} → DP6 : le projet inséré dans la vue d'ensemble
+//   {action:'controle', generation_id, token}           → l'IA compare la photo et le photomontage : rien d'autre n'a changé ?
 //   {action:'depot_url', generation_id, token}          → URL d'envoi signée pour le PDF
 //   {action:'depot', generation_id, token, a_verifier}  → dossier prêt à relire, email à l'admin
 //   {action:'echec', generation_id, token, message}     → échec, email à l'admin
@@ -17,7 +18,7 @@ import { admin, json, loadSettings, CORS, env, BUCKET, SITE_URL, sendEmail, emai
 
 const OR = 'https://openrouter.ai/api/v1';
 const IMAGES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_VISION = 8, MAX_IMAGE = 3;
+const MAX_VISION = 12, MAX_IMAGE = 3;
 
 const CONSIGNE = `Tu regardes la photo d'une façade de maison, prise de face.
 Repère le mur de la maison (de l'angle gauche à l'angle droit, du sol à la gouttière) et
@@ -117,6 +118,34 @@ Deno.serve(async (req) => {
         await maj({ insertion_path: path });
         const { data: s } = await db.storage.from(BUCKET).createSignedUrl(path, 3600);
         return json({ url: s?.signedUrl });
+    }
+
+    if (body.action === 'controle') {
+        const f = dernier('photo_ensemble');
+        if (!f || !g.insertion_path) return json({ error: 'rien_a_controler' }, 422);
+        const [{ data: avant }, { data: apres }] = await Promise.all([
+            db.storage.from(BUCKET).download(f.storage_path), db.storage.from(BUCKET).download(g.insertion_path)]);
+        if (!avant || !apres) return json({ error: 'storage' }, 500);
+        const r = await fetch(`${OR}/chat/completions`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${env('OPENROUTER_API_KEY')}`, 'Content-Type': 'application/json', 'X-Title': 'Urbatik' },
+            body: JSON.stringify({
+                model: env('VISION_MODEL', 'anthropic/claude-sonnet-4.5'), max_tokens: 1200,
+                messages: [{ role: 'user', content: [
+                    { type: 'text', text: 'Photo 1 : la photo originale du client.' },
+                    { type: 'image_url', image_url: { url: `data:${f.content_type};base64,${b64(new Uint8Array(await avant.arrayBuffer()))}` } },
+                    { type: 'text', text: 'Photo 2 : le photomontage pour la mairie.' },
+                    { type: 'image_url', image_url: { url: `data:image/png;base64,${b64(new Uint8Array(await apres.arrayBuffer()))}` } },
+                    { type: 'text', text: `Le photomontage doit seulement ajouter ce projet : ${String(body.projet ?? '').slice(0, 800)}
+Compare les deux photos. Liste tout ce qui a changé en dehors de l'ajout du projet : fenêtre, porte ou ouverture ajoutée, supprimée ou déplacée sur la maison, mur modifié, végétation, clôture, voisins, cadrage, lumière. Vérifie aussi que le projet ne recouvre aucune ouverture existante et que ses proportions sont plausibles par rapport à la maison.
+Réponds uniquement en JSON : {"ok": true|false, "ecarts": ["…"], "proportions": "plausibles|trop grand|trop petit"}` }] }],
+            }),
+        });
+        const rep = await r.json().catch(() => ({}));
+        if (!r.ok) return json({ error: 'openrouter', detail: rep?.error?.message ?? r.status }, 502);
+        const texte = String(rep.choices?.[0]?.message?.content ?? '');
+        try { return json(JSON.parse(texte.slice(texte.indexOf('{'), texte.lastIndexOf('}') + 1))); }
+        catch { return json({ ok: false, ecarts: ['contrôle illisible'] }); }
     }
 
     if (body.action === 'depot_url') {

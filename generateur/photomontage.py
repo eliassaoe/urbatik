@@ -30,7 +30,7 @@ def consigne(d):
         f"Toiture : {p.get('toiture', '')}. Parois et couleurs : {p.get('parois', '')}. Ouvertures du projet : {ouv}. "
         "Règles impératives : ne recouvre, ne déplace et ne redessine aucune fenêtre, porte ou ouverture existante de la maison ; "
         "si une fenêtre existante se trouve à l'emplacement, le projet s'arrête à côté ou en dessous, jamais par-dessus ; "
-        "aucune fenêtre de la maison ne doit apparaître sur le bardage du projet ; "
+        "aucune fenêtre de la maison ne doit apparaître sur le bardage du projet ; n'ajoute aucune fenêtre, porte ou élément à la maison ni au jardin ; "
         "pas de texte, pas de personnes, pas de mobilier ajouté, rien d'autre ne change. Rendu photographique, pas d'illustration."
     )
 

@@ -62,13 +62,25 @@ def main():
         if src: en_png(open(src, "rb").read(), os.path.join(photos, nom))
         else: a_verifier.append(f"Photo {sorte.replace('_', ' ')} absente : page photos à compléter.")
 
-    # DP6 : photomontage.
-    try:
-        r = appel("photomontage", prompt=P.consigne(d))
-        open(os.path.join(photos, "insertion.png"), "wb").write(telecharger(r["url"]))
-        a_verifier.append("Photomontage DP6 fait par l'IA : vérifier proportions, couleurs et emplacement.")
-    except Exception as e:
-        a_verifier.append(f"Photomontage DP6 non produit ({str(detail(e))[:160]}) : à faire à la main.")
+    # DP6 : photomontage, contrôlé par l'IA (rien d'autre ne doit changer sur la photo) ; 3 essais au plus.
+    retenu, dernier_ecart = False, ""
+    for essai in range(3):
+        try:
+            r = appel("photomontage", prompt=P.consigne(d) + (f" Essai précédent refusé : {dernier_ecart}. Corrige ce point." if dernier_ecart else ""))
+            img = telecharger(r["url"])
+            c = appel("controle", projet=f"{d['projet']['libelle']}, {d['projet']['implantation'].get('texte', '')}, "
+                                        f"{d['projet']['profondeur']} x {d['projet']['largeur']} m, {d['projet']['hauteur']} m de haut")
+            open(os.path.join(photos, "insertion.png"), "wb").write(img)
+            retenu = True
+            if c.get("ok"):
+                a_verifier.append(f"Photomontage DP6 fait par l'IA et contrôlé ({essai + 1} essai(s)) : jeter un œil aux proportions.")
+                break
+            dernier_ecart = "; ".join(map(str, c.get("ecarts", [])))[:400]
+        except Exception as e:
+            dernier_ecart = str(detail(e))[:200]
+    else:
+        a_verifier.append(f"Photomontage DP6 à reprendre : {dernier_ecart or 'non produit'}." if retenu
+                          else f"Photomontage DP6 non produit ({dernier_ecart}) : à faire à la main.")
 
     pdf = os.path.join(tmp, "dossier.pdf")
     D.generer(d, pdf, photos)
