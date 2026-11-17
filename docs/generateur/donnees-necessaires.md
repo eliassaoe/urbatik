@@ -57,3 +57,24 @@ Ajouter : « d'où avez-vous pris chaque photo ? » (on place la flèche sur le 
 - Contrôler les cotes du plan de masse contre la réalité (cadastre ≠ terrain à quelques cm près).
 - Corriger l'insertion paysagère si les proportions sont fausses.
 - Extensions et surélévations : relevé des façades existantes — restent chez lui au début.
+
+## Mis en place le 17 nov. 2026 : la fiche technique sur /suivi
+
+Choix : on ne rallonge **pas** le formulaire de commande (avant paiement, chaque question en plus
+fait perdre des commandes). Tout ce que le générateur demande en plus arrive **après le paiement**,
+sur la page de suivi, et le dossier ne démarre pas tant que ce n'est pas complet.
+
+- **Une seule liste de champs** : `FICHE` dans `supabase/functions/_shared/dossier-express.ts`.
+  La page /suivi l'affiche (champs selon le type d'ouvrage et les réponses : « une pente » fait
+  apparaître la hauteur à l'égout, « accolé » la façade d'accroche…), le serveur valide avec
+  (`validerFiche` : nombres, bornes, égout ≤ faîtage), et `missingItems` la compte comme manquante.
+- **Stockage** : `orders.fiche_technique` (jsonb) et `orders.fiche_technique_at`.
+- **Photos en plus** (`order_files.kind`) : `facade_avant`, `facade_arriere`, `facade_gauche`,
+  `facade_droite` (portes et fenêtres pour dessiner les 4 façades), `photo_emplacement` (de près,
+  pour l'insertion paysagère). Une façade déclarée inaccessible (collée au voisin) n'est pas exigée.
+- L'email de confirmation de paiement et la page /suivi listent ce qui manque ; un email prévient
+  l'admin quand la fiche est complète.
+- Modifiable jusqu'à la préparation du dossier, verrouillée ensuite (statut `en_relecture`).
+
+Reste à faire : brancher `generateur/dossier.py` sur `orders.fiche_technique` + cadastre, puis
+l'envoi automatique au relecteur.

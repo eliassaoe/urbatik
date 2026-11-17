@@ -24,6 +24,16 @@
 <link rel="stylesheet" href="/urbatik.css">
 <style>
 .hero{padding:30px 0 18px}
+.fiche h3{font-size:16px;margin:18px 0 2px}
+.fiche .aide{margin:0 0 8px}
+.fiche .champs{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+@media(max-width:620px){.fiche .champs{grid-template-columns:1fr}}
+.fiche label.f{margin:0}
+.fiche .u{position:relative}.fiche .u input{padding-right:38px}
+.fiche .u em{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-style:normal;color:var(--muted);font-size:14px}
+.fiche .bad input,.fiche .bad select{border-color:#dc2626}
+.fiche .req{color:#dc2626}
+.fiche .actions{display:flex;gap:12px;align-items:center;margin-top:16px;flex-wrap:wrap}
 </style>
 <script src="/js/site.js?v=2"></script>
 </head>
@@ -47,6 +57,12 @@
         <div id="drops"></div>
         <p class="small" id="upMsg" aria-live="polite"></p>
       </div>
+      <form class="card fiche" id="ficheCard" hidden novalidate>
+        <h2>📐 Fiche technique du projet</h2>
+        <p class="muted small" style="margin:-6px 0 4px">Ces mesures servent à dessiner les plans de la mairie. Un champ marqué <span class="req">*</span> est obligatoire. Vous pouvez enregistrer et revenir plus tard.</p>
+        <div id="ficheBody"></div>
+        <div class="actions"><button class="btn" type="submit" id="ficheSave">Enregistrer la fiche</button><span class="small" id="ficheMsg" aria-live="polite"></span></div>
+      </form>
       <div class="card">
         <h2>Avancement</h2>
         <ol class="steps" id="steps"></ol>
@@ -76,8 +92,13 @@ const PHOTO = {
   photo_facade: ["Photo de la façade concernée", "📷", "De face, là où seront les travaux"],
   photo_ensemble: ["Photo de la vue d'ensemble", "🏠", "Avec du recul, toute la maison"],
   photo_rue: ["Photo de la vue depuis la rue", "🛣️", "Comme la voit un passant"],
+  facade_avant: ["", "🏠", "Toute la façade, bien de face, portes et fenêtres visibles"],
+  facade_arriere: ["", "🏡", "Toute la façade, bien de face"],
+  facade_gauche: ["", "◧", "Toute la façade, bien de face"],
+  facade_droite: ["", "◨", "Toute la façade, bien de face"],
+  photo_emplacement: ["", "📍", "L'endroit exact où sera l'ouvrage, de près"],
 };
-const LABEL_TO_KIND = Object.fromEntries(Object.entries(PHOTO).map(([k, v]) => [v[0], k]));
+let LABEL_TO_KIND = Object.fromEntries(Object.entries(PHOTO).map(([k, v]) => [v[0], k]));
 const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en préparation"], ["en_relecture", "Relecture par un professionnel"], ["livree", "Dossier livré"], ["deposee", "Déposé en mairie"]];
 (function () {
   const token = new URLSearchParams(location.search).get("token") || "";
@@ -119,13 +140,16 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
       $("intro").innerHTML = "";
       const pill = document.createElement("span");
       pill.className = "pill " + (["annulee", "remboursee"].includes(d.status) ? "off" : d.missing.length ? "wait" : "ok");
-      pill.textContent = d.missing.length && d.status === "payee" ? "En attente de vos photos" : d.status_label;
+      pill.textContent = d.missing.length && d.status === "payee" ? (d.fiche_manquants.length ? "En attente de la fiche technique et des photos" : "En attente de vos photos") : d.status_label;
       $("intro").append(pill, document.createTextNode("  " + d.adresse));
       $("call1").href = $("call2").href = d.call_url;
 
+      (d.photos_attendues || []).forEach(([k, label]) => { if (PHOTO[k]) PHOTO[k][0] = label; });
+      LABEL_TO_KIND = Object.fromEntries(Object.entries(PHOTO).map(([k, v]) => [v[0], k]));
+      renderFiche(d, FICHE_DATA !== null);
       const drops = $("drops"); drops.textContent = "";
       const photoMissing = d.missing.filter(m => LABEL_TO_KIND[m]);
-      const other = d.missing.filter(m => !LABEL_TO_KIND[m]);
+      const other = d.missing.filter(m => !LABEL_TO_KIND[m] && m !== d.fiche_libelle);
       photoMissing.forEach(m => {
         const kind = LABEL_TO_KIND[m], [label, ico, help] = PHOTO[kind];
         const l = document.createElement("label"); l.className = "drop";
@@ -134,6 +158,7 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
         l.querySelector("input").addEventListener("change", e => { const f = e.target.files[0]; if (f) upload(kind, f); });
         drops.appendChild(l);
       });
+      if (d.fiche_manquants.length) { const p = document.createElement("p"); p.className = "note"; p.textContent = `📐 La fiche technique, juste en dessous : ${d.fiche_manquants.length} champ(s) à remplir.`; drops.appendChild(p); }
       other.forEach(m => { const p = document.createElement("p"); p.className = "note"; p.textContent = m + " : répondez à l'email de confirmation."; drops.appendChild(p); });
       $("missingCard").hidden = !d.missing.length;
 
@@ -163,6 +188,68 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
       $("error").hidden = false;
     }
   }
+  let FICHE_DATA = null;
+  function actif(c, ouvrage, f) {
+    if (c.ouvrages && !c.ouvrages.includes(ouvrage)) return false;
+    if (c.si) for (const k in c.si) if (!c.si[k].includes(String(f[k] ?? ""))) return false;
+    return true;
+  }
+  function lireFiche() {
+    const f = Object.assign({}, FICHE_DATA.fiche);
+    document.querySelectorAll("#ficheBody [name]").forEach(el => { f[el.name] = el.value; });
+    return f;
+  }
+  function renderFiche(d, garder) {
+    FICHE_DATA = d;
+    const card = $("ficheCard");
+    card.hidden = !["payee", "en_preparation"].includes(d.status) && !d.fiche_manquants.length;
+    if (card.hidden) return;
+    const f = garder ? lireFiche() : Object.assign({}, d.fiche);
+    const body = $("ficheBody"); body.textContent = "";
+    d.fiche_schema.forEach(sec => {
+      const champs = sec.champs.filter(c => actif(c, d.ouvrage, f));
+      if (!champs.length) return;
+      const h = document.createElement("h3"); h.textContent = sec.titre; body.appendChild(h);
+      if (sec.aide) { const p = document.createElement("p"); p.className = "muted small aide"; p.textContent = sec.aide; body.appendChild(p); }
+      const grid = document.createElement("div"); grid.className = "champs"; body.appendChild(grid);
+      champs.forEach(c => {
+        const l = document.createElement("label"); l.className = "f"; l.dataset.k = c.k;
+        const t = document.createElement("span"); t.textContent = c.label; l.appendChild(t);
+        if (c.requis) { const r = document.createElement("span"); r.className = "req"; r.textContent = " *"; t.appendChild(r); }
+        let input;
+        if (c.type === "choix") {
+          input = document.createElement("select");
+          input.appendChild(new Option("Choisir…", ""));
+          c.options.forEach(([v, lab]) => input.appendChild(new Option(lab, v)));
+          input.addEventListener("change", () => renderFiche(FICHE_DATA, true));
+        } else {
+          input = document.createElement("input");
+          if (c.type === "num") input.inputMode = "decimal";
+          if (c.aide && c.type === "texte") input.placeholder = c.aide;
+        }
+        input.name = c.k; input.value = f[c.k] ?? "";
+        if (c.unite) { const w = document.createElement("span"); w.className = "u"; w.appendChild(input); const em = document.createElement("em"); em.textContent = c.unite; w.appendChild(em); l.appendChild(w); }
+        else l.appendChild(input);
+        if (c.aide && c.type !== "texte") { const a = document.createElement("span"); a.className = "muted small"; a.textContent = c.aide; l.appendChild(a); }
+        grid.appendChild(l);
+      });
+    });
+  }
+  $("ficheCard").addEventListener("submit", async e => {
+    e.preventDefault();
+    const btn = $("ficheSave"); btn.disabled = true; $("ficheMsg").textContent = "Enregistrement…";
+    document.querySelectorAll("#ficheBody .bad").forEach(x => x.classList.remove("bad"));
+    try {
+      const r = await call({ action: "fiche_save", fiche: lireFiche() });
+      $("ficheMsg").textContent = r.manquants.length ? `✓ Enregistré. Il reste ${r.manquants.length} champ(s) obligatoire(s).` : "✓ Fiche complète. Merci !";
+      track("dossier_express_fiche_save", { manquants: r.manquants.length });
+      await load();
+    } catch (err) {
+      const er = err && err.data && err.data.erreurs;
+      if (er) { Object.keys(er).forEach(k => { const el = document.querySelector(`#ficheBody [data-k="${k}"]`); if (el) el.classList.add("bad"); }); $("ficheMsg").textContent = "Vérifiez les champs en rouge (valeur hors limites)."; }
+      else $("ficheMsg").textContent = err && err.data && err.data.error === "verrouille" ? "Le dossier est déjà en relecture : écrivez-nous pour une modification." : "L'enregistrement a échoué. Réessayez.";
+    } finally { btn.disabled = false; }
+  });
   $("extra").addEventListener("change", e => { const f = e.target.files[0]; if (f) upload("complement", f); e.target.value = ""; });
   load();
 })();

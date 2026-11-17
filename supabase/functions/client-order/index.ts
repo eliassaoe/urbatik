@@ -10,6 +10,7 @@
 import {
     admin, json, loadSettings, CORS, env, TYPES, OUVRAGES, FILE_KINDS, BUCKET, MAX_FILE_BYTES, ALLOWED_TYPES, SITE_URL, CALL_URL,
     DELAI, missingItems, safeName, sendEmail, emailShell, esc, TypeDossier,
+    FICHE, validerFiche, ficheManquants, facadesAttendues, FICHE_LIBELLE,
 } from '../_shared/dossier-express.ts';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -50,7 +51,32 @@ Deno.serve(async (req) => {
             missing: missingItems(o, (files ?? []).map(f => f.kind)),
             files: (files ?? []).map(f => ({ kind: FILE_KINDS[f.kind] ?? f.kind, filename: f.filename, created_at: f.created_at })),
             call_url: CALL_URL,
+            ouvrage: o.type_ouvrage,
+            fiche_schema: FICHE,
+            fiche: o.fiche_technique ?? {},
+            fiche_libelle: FICHE_LIBELLE,
+            fiche_manquants: ficheManquants(o.type_ouvrage, o.fiche_technique),
+            photos_attendues: facadesAttendues(o.fiche_technique).map(k => [k, FILE_KINDS[k]]),
         });
+    }
+
+    // Fiche technique (page /suivi) : enregistrable en plusieurs fois, jusqu'à la préparation du dossier.
+    if (body.action === 'fiche_save') {
+        if (!['payee', 'en_preparation'].includes(o.status)) return json({ error: 'verrouille' }, 409);
+        const { fiche, erreurs } = validerFiche(o.type_ouvrage, (body.fiche ?? {}) as Record<string, unknown>);
+        if (Object.keys(erreurs).length) return json({ error: 'champs', erreurs }, 422);
+        const fusion = { ...(o.fiche_technique ?? {}), ...fiche };
+        for (const [k, v] of Object.entries((body.fiche ?? {}) as Record<string, unknown>)) if (v === '' || v === null) delete fusion[k];
+        const manquants = ficheManquants(o.type_ouvrage, fusion);
+        const { error } = await db.from('orders').update({ fiche_technique: fusion, fiche_technique_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', o.id);
+        if (error) { console.error(error); return json({ error: 'db' }, 500); }
+        if (!manquants.length && ficheManquants(o.type_ouvrage, o.fiche_technique).length) {
+            const lien = `${SITE_URL}/admin/dossiers#${o.id}`;
+            await sendEmail(env('ADMIN_EMAIL'), `Fiche technique complète – ${o.entreprise} – ${o.ville}`,
+                emailShell(`<p>${esc(o.contact_nom)} a complété la fiche technique.</p><p><a href="${esc(lien)}">Ouvrir le dossier</a></p>`),
+                `${o.contact_nom} a complété la fiche technique. ${lien}`);
+        }
+        return json({ ok: true, manquants });
     }
 
     // Avis client (demandé par email à la livraison) : publié seulement après validation dans l'admin.
