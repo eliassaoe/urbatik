@@ -38,5 +38,17 @@ Page de garde, DP1 extrait cadastral, DP2 plan de masse avant / après coté (1/
 prestataire), DP3 coupe avec limites de propriété, DP4 les 4 façades avant / après (projet masqué
 quand il est derrière la maison), DP5 deux vues 3D, DP7/DP8 photos, DP11 notice.
 
+## En production (17 nov. 2026)
+1. Fiche complète + photos reçues sur /suivi -> `lancerGeneration()` (client-order) crée une ligne
+   `dossier_generations` et lance `.github/workflows/generer-dossier.yml` avec un jeton à usage unique (3 h).
+2. Le workflow exécute `generateur/ci.py` : tout passe par l'Edge Function `dossier-ia` (commande, photos,
+   lecture des façades et photomontage via OpenRouter, dépôt du PDF dans le stockage privé).
+3. Email à l'admin + carte « Dossier généré par l'IA » sur /admin/dossiers, onglet « Dossiers IA » pour la
+   liste ; bouton « Relancer », bouton « Relu, validé ».
+
+Secrets Supabase à saisir par le gérant : `OPENROUTER_API_KEY`, `GITHUB_DISPATCH_TOKEN` (jeton GitHub à
+grain fin, dépôt eliassaoe/urbatik seulement, droit Contents: write). Aucune clé dans GitHub.
+Dépôt public = journaux d'Actions publics : `ci.py` n'écrit rien de la commande, le PDF n'est jamais un artefact.
+
 ## Ce qui reste marqué « À compléter par le relecteur » (orange)
 - Ce que l'IA n'a pas pu produire : DP6 sans clé d'image, vue aérienne si l'IGN ne répond pas.

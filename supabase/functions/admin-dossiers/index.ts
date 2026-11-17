@@ -7,12 +7,15 @@
 //   {action:'crm_list', token}          → prospects pour /admin/prospects
 //   {action:'crm_update', token, email, fields, create?}
 //   {action:'clients', token}             → fichier clients (dossier_clients), payeurs ou non
+//   {action:'generations', token}         → dossiers générés par l'IA, en cours ou à relire
+//   {action:'generer', token, id}         → (re)lance le générateur pour une commande
+//   {action:'generation_statut', token, gid, status:'validee'|'a_relire'}
 //
 // ADMIN_PASSWORD : choisi par le gérant, saisi par lui dans dossier_settings (jamais dans le dépôt).
 // ADMIN_SESSION_SECRET : aléatoire, dans dossier_settings ; le changer déconnecte tout le monde.
 // Déployer avec --no-verify-jwt.
 
-import { admin, json, loadSettings, CORS, env, BUCKET, SITE_URL, sendEmail, emailShell, esc, TYPES, TypeDossier } from '../_shared/dossier-express.ts';
+import { admin, json, loadSettings, CORS, env, BUCKET, SITE_URL, sendEmail, emailShell, esc, TYPES, TypeDossier, lancerGeneration } from '../_shared/dossier-express.ts';
 
 const STATUSES = ['en_attente_paiement', 'payee', 'en_preparation', 'en_relecture', 'livree', 'deposee', 'annulee', 'remboursee'];
 const DAYS_30 = 30 * 86_400_000;
@@ -80,9 +83,18 @@ Deno.serve(async (req) => {
             ? await db.storage.from(BUCKET).createSignedUrls(list.map(f => f.storage_path), 7 * 86_400)
             : { data: [] };
         const { client_token: _t, ...order } = o;
+        const { data: gens } = await db.from('dossier_generations')
+            .select('id, status, a_verifier, pdf_path, insertion_path, erreur, lance_par, created_at, updated_at')
+            .eq('order_id', o.id).order('created_at', { ascending: false }).limit(5);
+        const generations = await Promise.all((gens ?? []).map(async g => ({
+            ...g,
+            pdf_url: g.pdf_path ? (await db.storage.from(BUCKET).createSignedUrl(g.pdf_path, 7 * 86_400)).data?.signedUrl ?? null : null,
+            insertion_url: g.insertion_path ? (await db.storage.from(BUCKET).createSignedUrl(g.insertion_path, 7 * 86_400)).data?.signedUrl ?? null : null,
+        })));
         return json({
             order, suivi_url: `${SITE_URL}/suivi?token=${o.client_token}`,
             files: list.map((f, i) => ({ ...f, url: signed?.[i]?.signedUrl ?? null })),
+            generations,
         });
     }
 
@@ -106,6 +118,30 @@ Deno.serve(async (req) => {
                 `Votre dossier est livré. Votre avis en 30 secondes : ${lien}`);
             if (ok) await db.from('orders').update({ review_requested_at: new Date().toISOString() }).eq('id', o.id);
         }
+        return json({ ok: true });
+    }
+
+    if (body.action === 'generations') {
+        const { data: gens, error } = await db.from('dossier_generations')
+            .select('id, order_id, status, a_verifier, erreur, created_at, updated_at, orders(entreprise, ville, type_dossier, type_ouvrage, status)')
+            .order('created_at', { ascending: false }).limit(200);
+        if (error) { console.error(error); return json({ error: 'db' }, 500); }
+        // la dernière génération de chaque commande
+        const vues = new Set<string>();
+        return json({ generations: (gens ?? []).filter(g => !vues.has(g.order_id) && vues.add(g.order_id)) });
+    }
+
+    if (body.action === 'generer') {
+        const { data: o } = await db.from('orders').select('*').eq('id', String(body.id ?? '')).maybeSingle();
+        if (!o) return json({ error: 'not_found' }, 404);
+        return json({ resultat: await lancerGeneration(db, o, 'admin', true) });
+    }
+
+    if (body.action === 'generation_statut') {
+        if (!['validee', 'a_relire'].includes(body.status)) return json({ error: 'status' }, 422);
+        const { error } = await db.from('dossier_generations').update({ status: body.status, updated_at: new Date().toISOString() })
+            .eq('id', String(body.gid ?? '')).in('status', ['validee', 'a_relire']);
+        if (error) { console.error(error); return json({ error: 'db' }, 500); }
         return json({ ok: true });
     }
 

@@ -1,0 +1,27 @@
+# Génère un dossier de mairie quand une commande est complète.
+# Lancé par Supabase (lancerGeneration -> repository_dispatch). Aucune clé IA ici : le jeton reçu ne vaut
+# que pour une commande, 3 heures. Le dépôt est public : rien de la commande n'est écrit dans les journaux,
+# le PDF n'est jamais un artefact (il part dans le stockage privé Supabase).
+name: generer-dossier
+on:
+  repository_dispatch:
+    types: [generer-dossier]
+permissions:
+  contents: read
+jobs:
+  generer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Masquer le jeton
+        run: echo "::add-mask::${{ github.event.client_payload.token }}"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet pymupdf matplotlib pillow
+      - name: Générer
+        env:
+          GENERATION_ID: ${{ github.event.client_payload.generation_id }}
+          GENERATION_TOKEN: ${{ github.event.client_payload.token }}
+        run: python generateur/ci.py

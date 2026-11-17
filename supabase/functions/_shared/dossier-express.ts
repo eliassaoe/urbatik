@@ -14,6 +14,11 @@
 //   DODO_CHECKOUT_BASE    https://checkout.dodopayments.com/buy/ (test : https://test.checkout.dodopayments.com/buy/)
 //   SITE_URL              https://urbatik.com
 //   CALL_URL              lien Calendly 15 min
+// Générateur de dossiers (secrets Supabase) :
+//   OPENROUTER_API_KEY    lecture des photos de façade + photomontage DP6 (fonction dossier-ia)
+//   GITHUB_DISPATCH_TOKEN jeton GitHub (droit « Contents: write » sur eliassaoe/urbatik seulement)
+//                         qui lance le workflow generer-dossier.yml
+// Facultatifs (dossier_settings) : VISION_MODEL, IMAGE_MODEL, GITHUB_REPO (eliassaoe/urbatik)
 // SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont fournis par Supabase.
 
 import { createClient, SupabaseClient } from 'jsr:@supabase/supabase-js@2';
@@ -339,4 +344,40 @@ function timingSafeEqual(a: string, b: string): boolean {
     let diff = 0;
     for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
     return diff === 0;
+}
+
+export async function sha256(t: string): Promise<string> {
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)));
+    return Array.from(h, x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// Lance le générateur de dossier (GitHub Actions) quand tout est reçu : fiche complète + photos.
+// Renvoie 'incomplet' | 'deja' | 'lancee' | 'echec'.
+export async function lancerGeneration(db: SupabaseClient, order: Record<string, any>, par = 'auto', forcer = false): Promise<string> {
+    const { data: files } = await db.from('order_files').select('kind').eq('order_id', order.id);
+    if (!forcer && missingItems(order, (files ?? []).map((f: { kind: string }) => f.kind)).length) return 'incomplet';
+    const { data: prec } = await db.from('dossier_generations').select('id, status, expires_at').eq('order_id', order.id)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (!forcer && prec && (['a_relire', 'validee'].includes(prec.status) ||
+        (['lancee', 'en_cours'].includes(prec.status) && new Date(prec.expires_at) > new Date()))) return 'deja';
+    if (!env('GITHUB_DISPATCH_TOKEN') && par === 'auto') return 'echec';   // pas encore configuré : rien à enregistrer
+    const jeton = randomToken();
+    const { data: g, error } = await db.from('dossier_generations')
+        .insert({ order_id: order.id, token_hash: await sha256(jeton), lance_par: par }).select('id').single();
+    if (error || !g) { console.error(error); return 'echec'; }
+    const gh = env('GITHUB_DISPATCH_TOKEN');
+    let erreur = gh ? '' : 'GITHUB_DISPATCH_TOKEN manquant dans les secrets Supabase';
+    if (gh) {
+        const r = await fetch(`https://api.github.com/repos/${env('GITHUB_REPO', 'eliassaoe/urbatik')}/dispatches`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${gh}`, Accept: 'application/vnd.github+json', 'User-Agent': 'urbatik', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event_type: 'generer-dossier', client_payload: { generation_id: g.id, token: jeton } }),
+        });
+        if (!r.ok) erreur = `GitHub a refusé le lancement (${r.status})`;
+    }
+    if (erreur) {
+        await db.from('dossier_generations').update({ status: 'echec', erreur, updated_at: new Date().toISOString() }).eq('id', g.id);
+        return 'echec';
+    }
+    return 'lancee';
 }

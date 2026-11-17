@@ -60,8 +60,10 @@
         document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
         const t = b.dataset.tab;
         $('ordersTbl').hidden = t !== 'orders'; $('clientsTbl').hidden = t !== 'clients'; $('avisTbl').hidden = t !== 'avis';
+        $('iaTbl').hidden = t !== 'ia';
         $('filter').hidden = t !== 'orders';
         if (t === 'clients') loadClients();
+        if (t === 'ia') loadGenerations();
         if (t === 'avis') loadReviews();
     }));
     window.addEventListener('hashchange', route);
@@ -122,6 +124,66 @@
         });
         if (!clients.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 6; td.className = 'muted'; td.textContent = 'Aucun contact pour le moment.'; tr.appendChild(td); tbody.appendChild(tr); }
     }
+
+    const GEN = { lancee: 'Lancé', en_cours: 'En cours', a_relire: 'À relire', echec: 'Échec', validee: 'Validé' };
+    const GEN_PILL = { lancee: 'wait', en_cours: 'wait', a_relire: 'wait', echec: 'off', validee: 'ok' };
+
+    async function loadGenerations() {
+        const { generations } = await api('generations');
+        const tbody = $('irows'); tbody.textContent = '';
+        generations.forEach(g => {
+            const o = g.orders || {};
+            const tr = document.createElement('tr');
+            [date(g.created_at), `${o.entreprise || ''}\n${o.ville || ''}`, `${TYPES[o.type_dossier] || ''}\n${OUVRAGES[o.type_ouvrage] || o.type_ouvrage || ''}`, null,
+                g.status === 'echec' ? (g.erreur || '') : `${(g.a_verifier || []).length} point(s)`].forEach((v, i) => {
+                const td = document.createElement('td');
+                if (i === 3) { const p = document.createElement('span'); p.className = 'pill ' + (GEN_PILL[g.status] || ''); p.textContent = GEN[g.status] || g.status; td.appendChild(p); }
+                else { td.textContent = v; td.style.whiteSpace = 'pre-line'; }
+                tr.appendChild(td);
+            });
+            tr.addEventListener('click', () => { location.hash = g.order_id; });
+            tbody.appendChild(tr);
+        });
+        if (!generations.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 5; td.className = 'muted'; td.textContent = "Aucun dossier généré. Le générateur part tout seul quand le client a rempli la fiche et envoyé ses photos."; tr.appendChild(td); tbody.appendChild(tr); }
+    }
+
+    function renderGen(d) {
+        const box = $('dGenBody'); box.textContent = '';
+        const g = (d.generations || [])[0];
+        $('genValider').hidden = !(g && g.status === 'a_relire');
+        $('genLancer').textContent = g ? 'Relancer la génération' : 'Générer maintenant';
+        if (!g) { box.textContent = "Pas encore lancé. Il part tout seul quand la fiche technique et les photos sont complètes."; return; }
+        const p = document.createElement('p'); p.style.margin = '0 0 8px';
+        const pill = document.createElement('span'); pill.className = 'pill ' + (GEN_PILL[g.status] || ''); pill.textContent = GEN[g.status] || g.status;
+        p.append(pill, document.createTextNode(` · lancé le ${date(g.created_at)}${g.lance_par === 'admin' ? ' (à la main)' : ''}`));
+        box.appendChild(p);
+        if (g.status === 'echec') { const e = document.createElement('p'); e.style.color = 'var(--amber)'; e.textContent = g.erreur || 'Échec.'; box.appendChild(e); }
+        if (['lancee', 'en_cours'].includes(g.status)) { const e = document.createElement('p'); e.textContent = 'Le dossier est en préparation (3 à 5 minutes). Rechargez la page.'; box.appendChild(e); }
+        [['📄 Ouvrir le dossier PDF', g.pdf_url], ['🖼 Photomontage DP6', g.insertion_url]].forEach(([t, u]) => {
+            if (!u) return; const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = t;
+            a.style.cssText = 'display:block;margin:4px 0;font-weight:600'; box.appendChild(a);
+        });
+        if ((g.a_verifier || []).length) {
+            const h = document.createElement('p'); h.style.margin = '10px 0 4px'; h.textContent = 'À vérifier par le relecteur :'; box.appendChild(h);
+            const ul = document.createElement('ul'); ul.style.margin = '0'; ul.style.paddingLeft = '18px';
+            g.a_verifier.forEach(x => { const li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
+            box.appendChild(ul);
+        }
+    }
+
+    $('genLancer').addEventListener('click', async () => {
+        const b = $('genLancer'); b.disabled = true;
+        try {
+            const { resultat } = await api('generer', { id: current.order.id });
+            flash(resultat === 'lancee' ? 'Génération lancée : 3 à 5 minutes.' : 'Lancement impossible : voir la carte.');
+            route();
+        } catch (e) { flash('Échec du lancement.'); }
+        b.disabled = false;
+    });
+    $('genValider').addEventListener('click', async () => {
+        const g = current.generations[0];
+        try { await api('generation_statut', { gid: g.id, status: 'validee' }); flash('Dossier marqué validé.'); route(); } catch (e) { flash('Échec.'); }
+    });
 
     async function loadReviews() {
         const { reviews } = await api('reviews');
@@ -186,6 +248,7 @@
             ['Prix HT', `${euros(o.montant_ht_cents)}${o.offre_10min ? ' (offre 10 min)' : ''}`],
             ['Relances photos', String(o.photo_reminders_sent || 0)],
         ]);
+        renderGen(d);
         const box = $('dFiles');
         if (!d.files.length) { box.textContent = 'Aucun fichier.'; }
         d.files.forEach(f => {

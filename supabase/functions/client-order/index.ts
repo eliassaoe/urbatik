@@ -10,7 +10,7 @@
 import {
     admin, json, loadSettings, CORS, env, TYPES, OUVRAGES, FILE_KINDS, BUCKET, MAX_FILE_BYTES, ALLOWED_TYPES, SITE_URL, CALL_URL,
     DELAI, missingItems, safeName, sendEmail, emailShell, esc, TypeDossier,
-    FICHE, validerFiche, ficheManquants, facadesAttendues, FICHE_LIBELLE,
+    FICHE, validerFiche, ficheManquants, facadesAttendues, FICHE_LIBELLE, lancerGeneration,
 } from '../_shared/dossier-express.ts';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -76,6 +76,8 @@ Deno.serve(async (req) => {
                 emailShell(`<p>${esc(o.contact_nom)} a complété la fiche technique.</p><p><a href="${esc(lien)}">Ouvrir le dossier</a></p>`),
                 `${o.contact_nom} a complété la fiche technique. ${lien}`);
         }
+        // Tout est là (fiche + photos) : le générateur prépare le dossier, le relecteur n'a plus qu'à relire.
+        if (!manquants.length) await lancerGeneration(db, { ...o, fiche_technique: fusion });
         return json({ ok: true, manquants });
     }
 
@@ -128,6 +130,7 @@ Deno.serve(async (req) => {
             await sendEmail(env('ADMIN_EMAIL'), `Nouveau fichier – ${o.entreprise} – ${o.ville}`,
                 emailShell(`<p>${esc(o.contact_nom)} a ajouté un fichier : <strong>${esc(FILE_KINDS[kind] ?? kind)}</strong> (${esc(filename)}).</p><p><a href="${esc(lien)}">Ouvrir le dossier dans l'admin</a></p>`),
                 `${o.contact_nom} a ajouté un fichier : ${FILE_KINDS[kind] ?? kind} (${filename}).\nDossier : ${lien}`);
+            if (['payee', 'en_preparation'].includes(o.status)) await lancerGeneration(db, o);
         }
         return json({ ok: true });
     }
