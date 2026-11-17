@@ -22,6 +22,12 @@ def appel(action, **kw):
     return json.loads(urllib.request.urlopen(req, timeout=300).read())
 
 
+def detail(e):
+    """Le message d'erreur renvoyé par dossier-ia (pour le relecteur, jamais dans les journaux)."""
+    try: return json.loads(e.read()).get("detail") or str(e)
+    except Exception: return type(e).__name__
+
+
 def telecharger(url):
     return urllib.request.urlopen(url, timeout=120).read()
 
@@ -57,8 +63,8 @@ def main():
         r = appel("photomontage", prompt=P.consigne(d))
         open(os.path.join(photos, "insertion.png"), "wb").write(telecharger(r["url"]))
         a_verifier.append("Photomontage DP6 fait par l'IA : vérifier proportions, couleurs et emplacement.")
-    except Exception:
-        a_verifier.append("Photomontage DP6 non produit : à faire à la main.")
+    except Exception as e:
+        a_verifier.append(f"Photomontage DP6 non produit ({str(detail(e))[:160]}) : à faire à la main.")
 
     pdf = os.path.join(tmp, "dossier.pdf")
     D.generer(d, pdf, photos)
