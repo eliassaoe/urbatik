@@ -83,6 +83,98 @@ def rectangle(poly):
     return [P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1)]
 
 
+def lire_ouverture(texte):
+    """« 1,80 x 2,10 m, ouverture libre sans porte » -> largeur, hauteur, genre. Rien d'inventé : sans mesures, largeur 0."""
+    import re
+    t = texte.lower()
+    nums = [float(x.replace(",", ".")) for x in re.findall(r"\d+(?:[.,]\d+)?", t)]
+    nums = [x / 100 if x > 20 else x for x in nums]          # « 180 x 210 » en cm
+    larg, haut = (nums[0], nums[1]) if len(nums) >= 2 else (0, 0)
+    genre = "garage" if "garage" in t or "sectionnel" in t else "baie" if "baie" in t or "coulissant" in t else \
+        "porte_fenetre" if "porte-fen" in t or "porte fen" in t else "fenetre" if "fen" in t else "porte"
+    libre = "libre" in t or "sans porte" in t or "passage" in t
+    return {"type": texte.strip(), "largeur": larg, "hauteur": haut, "genre": genre, "libre": libre, "face": "exterieure"}
+
+
+def accroche(d, idx, pos, largeur, profondeur):
+    """Projet accolé à l'arête idx de la maison, calé à gauche / centré / à droite (vu de l'extérieur)."""
+    maison = d["maison"]["contour"]
+    L = D.dist(*D.edges(maison)[idx])
+    if pos == "toute": long_, dec = L, 0
+    else: long_ = largeur; dec = {"gauche": 0, "centre": (L - largeur) / 2, "droite": L - largeur}[pos]
+    a, b = D.edges(maison)[idx]; nv = D.normale_ext(maison, a, b); t = (-nv[1], nv[0])
+    depuis = "debut" if a[0] * t[0] + a[1] * t[1] < b[0] * t[0] + b[1] * t[1] else "fin"
+    # le générateur : « profondeur » = le long du mur, « largeur » = l'avancée
+    return {"arete": idx, "depuis": depuis, "decalage": round(max(0, dec), 2)}, profondeur, long_
+
+
+def limites(d):
+    """Les côtés de la parcelle nommés comme sur la fiche : avant (rue), arriere (fond), gauche, droite."""
+    par = d["parcelle"]; c = D.centroid(d["maison"]["contour"])
+    r = D.route_arete(d); n_rue = D.unit(D.sub(D.mul(D.add(*r), 0.5), c))
+    gauche = (n_rue[1], -n_rue[0])     # vu depuis la rue, face à la maison
+    out = {"avant": [], "arriere": [], "gauche": [], "droite": []}
+    for a, b in D.edges(par):
+        nv = D.normale_ext(par, a, b); dp = nv[0] * n_rue[0] + nv[1] * n_rue[1]
+        cote = "avant" if dp > 0.7 else "arriere" if dp < -0.7 else ("gauche" if nv[0] * gauche[0] + nv[1] * gauche[1] > 0 else "droite")
+        out[cote].append((a, b))
+    return out
+
+
+def ecarts(d, imp, larg, prof):
+    """Distance du projet à chaque limite, et une pénalité s'il déborde de la parcelle ou chevauche la maison."""
+    pc = D.projet_contour(d["maison"]["contour"], imp, larg, prof)[0]
+    par = d["parcelle"]
+    dehors = sum(1 for q in pc if not dans(q, par) and min(D.seg_dist(q, a, b) for a, b in D.edges(par)) > 0.05)
+    mi = D.centroid(pc)
+    sur_maison = dans(mi, d["maison"]["contour"])
+    dist = {k: round(min(D.seg_dist(q, a, b) for q in pc for a, b in e), 2) for k, e in limites(d).items() if e}
+    return dist, 100 * dehors + 100 * sur_maison
+
+
+def placer(d, f, largeur, profondeur):
+    """Choisit l'implantation : ce que le client a coché, corrigé par les distances aux limites qu'il a données.
+    Renvoie (implantation, largeur, profondeur, remarque pour le relecteur)."""
+    noms = D.noms_facades(d)
+    voulu = {k: f[f"dist_{k}_m"] for k in ("avant", "arriere", "gauche", "droite") if isinstance(f.get(f"dist_{k}_m"), (int, float))}
+    ecart_voulu = lambda dist: sum(abs(dist.get(k, v) - v) for k, v in voulu.items())
+    cands = []
+    if f.get("implantation") == "accole":
+        cote, pos = f.get("facade_accroche"), f.get("position_sur_facade", "gauche")
+        for idx, nom in noms.items():
+            for p_ in ("gauche", "centre", "droite") + (("toute",) if pos == "toute" else ()):
+                imp, lg, pf = accroche(d, idx, p_, largeur, profondeur)
+                dist, pen = ecarts(d, imp, lg, pf)
+                score = ecart_voulu(dist) + pen + (0 if nom == cote else 1.5) + (0 if p_ == pos else 0.4)
+                cands.append((score, nom == cote and p_ == pos, imp, lg, pf, nom, p_, dist))
+        best = min(cands, key=lambda c: c[0])
+        score, exact, imp, lg, pf, nom, p_, dist = best
+        imp["texte"] = f"accolé à la façade {nom.replace('arriere', 'arrière')} de la maison"
+        note = "" if exact else (f"Implantation corrigée d'après les distances aux limites données par le client : façade {nom}, "
+                                 f"position {p_} (le client avait coché façade {cote}, position {pos}). À vérifier.")
+    else:
+        gap = f.get("distance_maison_m", 2)
+        maison = d["maison"]["contour"]
+        for idx, nom in noms.items():
+            L = D.dist(*D.edges(maison)[idx])
+            for lg, pf in ((profondeur, largeur), (largeur, profondeur)):
+                for k in range(0, max(1, int((L + pf) / 0.5)) + 1):
+                    dec = -pf + 0.5 * k
+                    imp = {"arete": idx, "depuis": "debut", "decalage": round(dec, 2), "isole": gap}
+                    dist, pen = ecarts(d, imp, lg, pf)
+                    if voulu: score = ecart_voulu(dist) + pen
+                    else: score = pen + (0 if nom == "arriere" else 1) + abs(dec) * 0.01
+                    cands.append((score, imp, lg, pf, nom, dist))
+        score, imp, lg, pf, nom, dist = min(cands, key=lambda c: c[0])
+        imp["texte"] = f"isolé dans le jardin, à {gap} m de la maison"
+        note = ("Ouvrage isolé placé d'après la distance à la maison et les distances aux limites : à vérifier sur le plan."
+                if voulu else "Ouvrage isolé : placé derrière la maison (aucune distance aux limites donnée), à vérifier sur le plan.")
+    if voulu and ecart_voulu(dist) > 0.5 * len(voulu):
+        note += f" Écart avec les distances déclarées : {', '.join(f'{k} {dist.get(k)} m au lieu de {v} m' for k, v in voulu.items())}."
+    d["_distances_limites"] = dist
+    return imp, lg, pf, note.strip()
+
+
 def construire(commande, photos_dir, lire_photos=True):
     f = commande.get("fiche_technique") or {}
     a_verifier = []
@@ -133,24 +225,8 @@ def construire(commande, photos_dir, lire_photos=True):
     noms = D.noms_facades(d)
     largeur, profondeur = f.get("largeur_m"), f.get("profondeur_m")
     hauteur = float(str(commande.get("hauteur_m", "0")).replace(",", "."))
-    imp = {"texte": ""}
-    if f.get("implantation") == "accole":
-        cote = f.get("facade_accroche"); idx = next(i for i, n in noms.items() if n == cote)
-        L = D.dist(*D.edges(maison)[idx]); pos = f.get("position_sur_facade", "gauche")
-        if pos == "toute": profondeur_long, dec = L, 0
-        else: profondeur_long = largeur; dec = {"gauche": 0, "centre": (L - largeur) / 2, "droite": L - largeur}[pos]
-        # « gauche » = vu de l'extérieur, face à la façade (comme sur la photo)
-        a, b = D.edges(maison)[idx]; nv = D.normale_ext(maison, a, b); t = (-nv[1], nv[0])
-        depuis = "debut" if a[0] * t[0] + a[1] * t[1] < b[0] * t[0] + b[1] * t[1] else "fin"
-        imp = {"arete": idx, "depuis": depuis, "decalage": round(max(0, dec), 2),
-               "texte": f"accolé à la façade {cote.replace('arriere', 'arrière')} de la maison"}
-        larg_proj, prof_proj = profondeur, profondeur_long   # le générateur : profondeur = le long du mur
-    else:
-        a_verifier.append("Ouvrage isolé : position dans le jardin placée d'après la distance à la maison, à vérifier sur le plan.")
-        idx = next(i for i, n in noms.items() if n == "arriere")
-        imp = {"arete": idx, "depuis": "debut", "decalage": 0, "isole": f.get("distance_maison_m", 2),
-               "texte": f"isolé dans le jardin, à {f.get('distance_maison_m', 2)} m de la maison"}
-        larg_proj, prof_proj = profondeur, largeur
+    imp, larg_proj, prof_proj, note = placer(d, f, largeur, profondeur)
+    if note: a_verifier.append(note)
     d["projet"] = {
         "nature": NATURE.get(commande["type_ouvrage"], commande["type_ouvrage"].upper()),
         "libelle": LIBELLE.get(commande["type_ouvrage"], "Travaux"),
@@ -158,11 +234,13 @@ def construire(commande, photos_dir, lire_photos=True):
         "toit": {"plat": "plat"}.get(f.get("toit"), f.get("toit", "plat")), "hauteur_egout": f.get("hauteur_egout_m"),
         "toiture": commande.get("materiaux", ""), "parois": commande.get("couleurs", ""),
         "implantation": imp,
-        "ouvertures": [{"face": "", "largeur": 0, "hauteur": 0, "type": o} for o in (f.get("ouverture_1"), f.get("ouverture_2")) if o],
+        "ouvertures": [lire_ouverture(o) for o in (f.get("ouverture_1"), f.get("ouverture_2")) if o],
         "arbres_abattus": f.get("arbres_abattus") == "oui",
         "reseaux": "électricité, eau potable" + (", tout-à-l'égout" if f.get("assainissement") == "collectif" else ""),
     }
-    if f.get("ouverture_1"): a_verifier.append("Ouvertures du projet décrites en texte : à placer sur la façade si besoin.")
+    for o in d["projet"]["ouvertures"]:
+        if not o["largeur"]: a_verifier.append(f"Ouverture du projet sans dimensions lisibles (« {o['type']} ») : à dessiner.")
+    if d["projet"]["ouvertures"]: a_verifier.append("Ouvertures du projet dessinées au centre de la face extérieure : vérifier leur place.")
 
     # Portes et fenêtres : lues sur les photos de façade (une par côté).
     if lire_photos:

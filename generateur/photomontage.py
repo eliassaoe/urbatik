@@ -15,15 +15,23 @@ MODELE = os.environ.get("IMAGE_MODEL", "gpt-image-1")
 
 def consigne(d):
     p, m = d["projet"], d["maison"]
+    imp = p["implantation"]
+    ouv = "; ".join(f"{o['type']}" for o in p.get("ouvertures", [])) or "aucune"
+    dist = d.get("_distances_limites") or {}
+    limite = [k for k, v in dist.items() if v is not None and v < 0.3]
     return (
-        "Photomontage réaliste pour un dossier de déclaration préalable en mairie. "
-        "Garde la photo strictement identique (cadrage, lumière, maison, jardin, voisins) et ajoute seulement ce projet : "
-        f"{p['libelle'].lower()}, {p['implantation'].get('texte', '')}. "
-        f"Dimensions exactes : {p['largeur']} m × {p['profondeur']} m au sol, {p['hauteur']} m de haut. "
-        f"Repère d'échelle : la gouttière de la maison est à {m['hauteur_gouttiere']} m, le faîtage à {m['hauteur_faitage']} m ; "
-        f"le projet doit donc arriver à {round(p['hauteur'] / m['hauteur_gouttiere'] * 100)} % de la hauteur de la gouttière. "
-        f"Toiture : {p.get('toiture', '')}. Parois et couleurs : {p.get('parois', '')}. "
-        "Pas de texte, pas de personnes, pas de mobilier ajouté, rien d'autre ne change."
+        "Photomontage réaliste pour un dossier de déclaration préalable en mairie (pièce DP6, insertion paysagère). "
+        "Garde la photo strictement identique : même cadrage, même lumière, même maison, mêmes végétaux, mêmes voisins. "
+        f"Ajoute uniquement ce projet : {p['libelle'].lower()}, {imp.get('texte', '')}"
+        + (", posé en limite de propriété (contre la clôture ou le muret visible)" if limite else "") + ". "
+        f"Dimensions exactes : {p['profondeur']} m le long du mur de la maison, {p['largeur']} m d'avancée, {p['hauteur']} m de haut. "
+        f"Repère d'échelle : la gouttière de la maison est à {m['hauteur_gouttiere']} m et le faîtage à {m['hauteur_faitage']} m ; "
+        f"le projet arrive donc à {round(p['hauteur'] / m['hauteur_gouttiere'] * 100)} % de la hauteur de la gouttière. "
+        f"Toiture : {p.get('toiture', '')}. Parois et couleurs : {p.get('parois', '')}. Ouvertures du projet : {ouv}. "
+        "Règles impératives : ne recouvre, ne déplace et ne redessine aucune fenêtre, porte ou ouverture existante de la maison ; "
+        "si une fenêtre existante se trouve à l'emplacement, le projet s'arrête à côté ou en dessous, jamais par-dessus ; "
+        "aucune fenêtre de la maison ne doit apparaître sur le bardage du projet ; "
+        "pas de texte, pas de personnes, pas de mobilier ajouté, rien d'autre ne change. Rendu photographique, pas d'illustration."
     )
 
 

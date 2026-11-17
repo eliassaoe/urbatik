@@ -191,6 +191,11 @@ def fleche_nord(page, c, angle):
     txt(page, (tip.x + d[0] * 10, tip.y - d[1] * 10 + 4), "N", 11, BOLD, align="center")
 
 
+def nom_ouverture(o):
+    if o.get("libre"): return "Ouverture libre sans menuiserie"
+    return {"garage": "Porte de garage", "baie": "Baie vitrée", "porte_fenetre": "Porte-fenêtre", "fenetre": "Fenêtre"}.get(o.get("genre"), "Porte")
+
+
 def note_projet(page, d, x, y, w=300):
     p = d["projet"]; surf = p["largeur"] * p["profondeur"]
     lignes = [f"{p['libelle'].upper()} - {surf:.0f} m²",
@@ -200,7 +205,7 @@ def note_projet(page, d, x, y, w=300):
               f"· {p['toiture'].upper()}.",
               f"· PAROIS : {p['parois'].upper()}."]
     for o in p.get("ouvertures", []):
-        lignes.append(f"· {o['type'].upper()} : {m(o['largeur'])} × {m(o['hauteur'])}")
+        lignes.append(f"· {nom_ouverture(o).upper()} : {m(o['largeur'])} × {m(o['hauteur'])}" if o.get("largeur") else f"· OUVERTURE : {o['type'].upper()}")
     rect = pymupdf.Rect(x, y, x + w, y + 14 + 11.5 * sum(1 + len(l) // 62 for l in lignes))
     page.draw_rect(rect, color=(0, 0, 0), fill=(1, 1, 1), width=0.6)
     page.insert_textbox(rect + (6, 5, -6, -4), "\n".join(lignes), fontsize=7.2, fontname=FONT)
@@ -446,6 +451,52 @@ def coupe(doc, d):
     cartouche(pg, "COUPE", "100", "DP 3")
 
 
+def menuiserie(pg, rr, genre, volets, k):
+    """Une porte ou une fenêtre dessinée comme sur un plan d'architecte : dormant, ouvrants, vitrage, appui."""
+    noir, blanc, vitre = (0.15, 0.15, 0.15), (1, 1, 1), (0.8, 0.88, 0.95)
+    e = max(1.2, 0.06 * k)                                   # épaisseur du dormant (~6 cm)
+    if genre == "garage":
+        pg.draw_rect(rr, color=noir, fill=blanc, width=0.9)
+        y = rr.y0 + 0.5 * k
+        while y < rr.y1 - 2:
+            pg.draw_line(pymupdf.Point(rr.x0, y), pymupdf.Point(rr.x1, y), color=noir, width=0.4); y += 0.5 * k
+        n = max(2, round(rr.width / (0.6 * k)))
+        for i in range(1, n): pg.draw_line(pymupdf.Point(rr.x0 + i * rr.width / n, rr.y0), pymupdf.Point(rr.x0 + i * rr.width / n, rr.y1), color=noir, width=0.25)
+        return
+    pg.draw_rect(rr, color=noir, fill=blanc, width=0.9)
+    inner = pymupdf.Rect(rr.x0 + e, rr.y0 + e, rr.x1 - e, rr.y1 - (0 if genre in ("porte", "porte_fenetre", "baie") else e))
+    if genre == "porte":
+        pg.draw_rect(inner, color=noir, fill=(0.96, 0.95, 0.92), width=0.5)
+        hv = inner.height * 0.28                              # imposte vitrée en haut
+        pg.draw_rect(pymupdf.Rect(inner.x0 + e, inner.y0 + e, inner.x1 - e, inner.y0 + hv), color=noir, fill=vitre, width=0.4)
+        pg.draw_rect(pymupdf.Rect(inner.x0 + e, inner.y0 + hv + e, inner.x1 - e, inner.y1 - e), color=noir, width=0.3)
+        pg.draw_circle(pymupdf.Point(inner.x1 - 2.2 * e, (inner.y0 + inner.y1) / 2), max(0.8, e * 0.5), color=noir, fill=noir)
+    else:
+        n = 1 if inner.width < 0.65 * k else 3 if genre == "baie" and inner.width > 2.4 * k else 2
+        w = inner.width / n
+        for i in range(n):
+            leaf = pymupdf.Rect(inner.x0 + i * w, inner.y0, inner.x0 + (i + 1) * w, inner.y1)
+            pg.draw_rect(leaf, color=noir, width=0.5)
+            glass = pymupdf.Rect(leaf.x0 + e * 0.8, leaf.y0 + e * 0.8, leaf.x1 - e * 0.8, leaf.y1 - e * (3 if genre == "porte_fenetre" else 0.8))
+            pg.draw_rect(glass, color=noir, fill=vitre, width=0.35)
+            if genre == "porte_fenetre":                     # soubassement plein
+                pg.draw_rect(pymupdf.Rect(glass.x0, glass.y1, glass.x1, leaf.y1 - e * 0.8), color=noir, fill=blanc, width=0.35)
+        if genre in ("fenetre",):                            # appui de fenêtre
+            pg.draw_rect(pymupdf.Rect(rr.x0 - 2, rr.y1, rr.x1 + 2, rr.y1 + max(1.5, 0.05 * k)), color=noir, fill=(0.85, 0.85, 0.85), width=0.5)
+    if volets:
+        for x_ in (rr.x0 - rr.width / 2, rr.x1):
+            v = pymupdf.Rect(x_, rr.y0, x_ + rr.width / 2, rr.y1)
+            pg.draw_rect(v, color=noir, fill=(0.93, 0.93, 0.9), width=0.5)
+            y = v.y0 + 3
+            while y < v.y1: pg.draw_line(pymupdf.Point(v.x0, y), pymupdf.Point(v.x1, y), color=(0.5, 0.5, 0.5), width=0.2); y += 3
+
+
+def etiquette_non_visible(pg, cx, cy):
+    r = pymupdf.Rect(cx - 70, cy - 13, cx + 70, cy + 13)
+    pg.draw_rect(r, color=(0.2, 0.2, 0.2), fill=(1, 1, 1), width=0.8)
+    txt(pg, (cx, cy - 2), "PROJET NON VISIBLE", 8, BOLD, align="center"); txt(pg, (cx, cy + 8), "SUR CETTE FACADE", 8, BOLD, align="center")
+
+
 def facades(doc, d):
     """Une page par façade qui montre le projet : avant à gauche, après à droite."""
     mai = d["maison"]["contour"]; p = d["projet"]; mm = d["maison"]
@@ -464,7 +515,7 @@ def facades(doc, d):
         pg = doc.new_page(width=W, height=H)
         nom = orientation(nv)
         for i, apres in enumerate((False, True)):
-            ox = 70 + i * 520; sol = 560
+            ox = 140; sol = 360 + i * 330                   # avant en haut, après en dessous (comme le prestataire)
             X = lambda s: ox + (s - lo) * k
             g, f = mm["hauteur_gouttiere"], mm["hauteur_faitage"]
             h0, h1 = min(hx), max(hx)
@@ -474,38 +525,41 @@ def facades(doc, d):
                 pts = [(X(h0), sol), (X(h0), sol - g * k), (X(h0), sol - f * k), (X(h1), sol - f * k), (X(h1), sol - g * k), (X(h1), sol)]
             poly(pg, [pymupdf.Point(*q) for q in pts], fill=(0.95, 0.93, 0.86), width=1)
             if not pignon:   # pan de toiture vu de face, au-dessus de la gouttière
-                pg.draw_rect(pymupdf.Rect(X(h0), sol - f * k, X(h1), sol - g * k), color=(0, 0, 0), fill=(0.66, 0.4, 0.32), width=1)
-            pg.draw_line(pymupdf.Point(ox - 20, sol), pymupdf.Point(ox + 460, sol), width=1)
+                pg.draw_rect(pymupdf.Rect(X(h0), sol - f * k, X(h1), sol - g * k), color=(0, 0, 0), fill=(0.72, 0.45, 0.35), width=1)
+                yy = sol - g * k - 4
+                while yy > sol - f * k + 2:                    # rangs de tuiles
+                    pg.draw_line(pymupdf.Point(X(h0), yy), pymupdf.Point(X(h1), yy), color=(0.5, 0.3, 0.22), width=0.35); yy -= 4.5
+            pg.draw_line(pymupdf.Point(ox - 30, sol), pymupdf.Point(X(hi) + 60, sol), width=1)
             mur0 = min(proj(a), proj(b))                     # bord gauche du mur, vu de l'extérieur
             for o in existantes:                             # portes et fenêtres lues sur la photo
                 rr = pymupdf.Rect(X(mur0 + o["x0"]), sol - o["haut"] * k, X(mur0 + o["x1"]), sol - o["bas"] * k)
-                vitre = o["type"] in ("fenetre", "porte_fenetre", "baie")
-                pg.draw_rect(rr, color=(0.2, 0.2, 0.2), fill=(0.78, 0.86, 0.93) if vitre else (0.62, 0.45, 0.3), width=0.8)
-                if vitre and rr.width > 8: pg.draw_line(pymupdf.Point(rr.x0 + rr.width / 2, rr.y0), pymupdf.Point(rr.x0 + rr.width / 2, rr.y1), width=0.4)
-                if o.get("volets"):
-                    for x_ in (rr.x0 - rr.width / 2, rr.x1):
-                        pg.draw_rect(pymupdf.Rect(x_, rr.y0, x_ + rr.width / 2, rr.y1), color=(0.2, 0.2, 0.2), fill=(0.9, 0.9, 0.88), width=0.5)
+                menuiserie(pg, rr, o["type"], o.get("volets"), k)
             p0, p1 = min(px), max(px)
             recouvre = max(0, min(p1, h1) - max(p0, h0)) > 0.3   # le projet passe derrière la maison
             devant = sum(nv[0] * (q[0] - a[0]) + nv[1] * (q[1] - a[1]) for q in pc) / 4 > -0.05 or not recouvre
             r = pymupdf.Rect(X(p0), sol - p["hauteur"] * k, X(p1), sol)
             if apres:
                 prof_pts = [pymupdf.Point(*q) for q in profil_projet(p, r.x0, r.x1, sol, k, haut_cote_gauche=(r.x0 + r.x1) / 2 > (X(h0) + X(h1)) / 2)]
-                poly(pg, prof_pts, fill=(0.83, 0.78, 0.66) if devant else None, width=1, dashes=None if devant else "[3 2] 0")
+                if devant: poly(pg, prof_pts, fill=(0.83, 0.78, 0.66), width=1)
                 for yy in range(int(r.y0) + 6, int(r.y1), 6):
                     if devant: pg.draw_line(pymupdf.Point(r.x0, yy), pymupdf.Point(r.x1, yy), color=(0.6, 0.55, 0.45), width=0.3)
                 for o in p.get("ouvertures", []):
-                    if devant and orientation(nv).replace(" ", "_").lower() == o["face"]:
+                    face_ok = (o["face"] == "exterieure" and ia == p["implantation"]["arete"]) or orientation(nv).replace(" ", "_").lower() == o["face"]
+                    if devant and face_ok and o.get("largeur"):
                         cx = (r.x0 + r.x1) / 2
-                        pg.draw_rect(pymupdf.Rect(cx - o["largeur"] * k / 2, sol - o["hauteur"] * k, cx + o["largeur"] * k / 2, sol), color=(0, 0, 0), fill=(0.3, 0.3, 0.3), width=0.8)
+                        ro = pymupdf.Rect(cx - o["largeur"] * k / 2, sol - o["hauteur"] * k, cx + o["largeur"] * k / 2, sol)
+                        if o.get("libre"): pg.draw_rect(ro, color=(0, 0, 0), fill=(0.25, 0.25, 0.25), width=0.8)
+                        else: menuiserie(pg, ro, o.get("genre", "porte"), False, k)
                 if devant: txt(pg, (r.x0 - 4 if r.x0 > X(h0) + 20 else r.x1 + 4, r.y0 - 4), niv(p["hauteur"]), 7.5, align="right" if r.x0 > X(h0) + 20 else "left")
-                if not devant: txt(pg, ((r.x0 + r.x1) / 2, r.y0 - 6), "PROJET NON VISIBLE SUR CETTE FACADE", 7, BOLD, align="center")
-            else:
+                if not devant: etiquette_non_visible(pg, (X(h0) + X(h1)) / 2, sol - (g + f) / 2 * k)
+            elif devant:
                 pg.draw_rect(r, color=RED, width=0.8, dashes="[4 3] 0")
+                txt(pg, ((r.x0 + r.x1) / 2, r.y0 - 5), "EMPLACEMENT PROJET", 6.5, BOLD, RED, align="center")
             txt(pg, (X(h1) + 6, sol - f * k + 4), niv(f), 7.5); txt(pg, (X(h1) + 6, sol - g * k + 4), niv(g), 7.5)
             txt(pg, (X(h1) + 6, sol + 4), "±0.00m", 7.5)
-            txt(pg, (ox, 120), f"{'b' if apres else 'a'}  FACADE {nom} : {'APRES' if apres else 'AVANT'} PROJET", 10, BOLD)
-            txt(pg, (ox, 134), f"(façade {noms[ia].replace('arriere', 'arrière')} vue depuis la rue)" if noms[ia] in ("gauche", "droite") else f"(façade {noms[ia].replace('arriere', 'arrière')})", 8, color=GREY)
+            ty = sol - mm["hauteur_faitage"] * k - 50
+            txt(pg, (ox, ty), f"{'b' if apres else 'a'}  FACADE {nom} : {'APRES' if apres else 'AVANT'} PROJET", 10, BOLD)
+            txt(pg, (ox, ty + 14), f"(façade {noms[ia].replace('arriere', 'arrière')} vue depuis la rue)" if noms[ia] in ("gauche", "droite") else f"(façade {noms[ia].replace('arriere', 'arrière')})", 8, color=GREY)
         note_projet(pg, d, 870, 600, 290)
         txt(pg, (870, 590), f"Maison : toiture {mm['toiture']}, {mm['facade']}", 7.5)
         echelle_graphique(pg, 80, 735, k)
@@ -592,7 +646,7 @@ def notice(doc, d):
          f"sur {m(p['profondeur'])} de profondeur, pour une hauteur de {m(p['hauteur'])}.\n{p['toiture'][0].upper() + p['toiture'][1:]}. "
          "Les eaux pluviales seront collectées et évacuées vers le réseau pluvial existant.\n"
          f"Parois : {p['parois']}.\n" +
-         "".join(f"{o['type'][0].upper() + o['type'][1:]} de {m(o['largeur'])} de largeur et {m(o['hauteur'])} de hauteur.\n" for o in p.get("ouvertures", [])) +
+         "".join((f"{nom_ouverture(o)} de {m(o['largeur'])} de largeur et {m(o['hauteur'])} de hauteur.\n" if o.get("largeur") else f"Ouverture : {o['type']}.\n") for o in p.get("ouvertures", [])) +
          "L'ensemble du projet adoptera des teintes et des matériaux sobres, en harmonie avec l'architecture existante."),
         ("SURFACES", f"Emprise au sol créée : {str(round(surf, 2)).replace(".", ",")} m². Surface de plancher créée : 0 m² (construction non close de plain-pied "
          "à vérifier selon l'usage)." if False else f"Emprise au sol créée : {str(round(surf, 2)).replace(".", ",")} m²."),
