@@ -50,5 +50,15 @@ Secrets Supabase à saisir par le gérant : `OPENROUTER_API_KEY`, `GITHUB_DISPAT
 grain fin, dépôt eliassaoe/urbatik seulement, droit Contents: write). Aucune clé dans GitHub.
 Dépôt public = journaux d'Actions publics : `ci.py` n'écrit rien de la commande, le PDF n'est jamais un artefact.
 
+## v2 (18 nov. 2026, après comparaison avec le dossier du prestataire)
+- Façades : menuiseries dessinées (dormant, ouvrants, vitrage, appui, volets, porte de garage sectionnelle),
+  rangs de tuiles, avant au-dessus / après en dessous ; « projet non visible » en étiquette, sans pointillés.
+- Implantation : les distances aux limites de la fiche servent de contrôle et corrigent la position si elles
+  contredisent la façade cochée ; la remarque part au relecteur.
+- Ouvertures du projet lues dans le texte de la fiche (« 1,80 x 2,10 m, ouverture libre »).
+- Photomontage : modèle d'image réglable (IMAGE_MODEL, aujourd'hui google/gemini-3-pro-image), puis
+  contrôle par le modèle de vision (VISION_MODEL, aujourd'hui anthropic/claude-fable-5.2) qui compare avec la
+  photo d'origine ; refait jusqu'à 3 fois si une fenêtre a été ajoutée, cachée ou déplacée.
+
 ## Ce qui reste marqué « À compléter par le relecteur » (orange)
 - Ce que l'IA n'a pas pu produire : DP6 sans clé d'image, vue aérienne si l'IGN ne répond pas.
