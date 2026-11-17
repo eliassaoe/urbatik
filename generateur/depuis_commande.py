@@ -58,6 +58,12 @@ def dans(p, poly):
     return r
 
 
+def dist_segment(p, a, b):
+    ax, ay = b[0] - a[0], b[1] - a[1]; L2 = ax * ax + ay * ay or 1e-9
+    t = max(0, min(1, ((p[0] - a[0]) * ax + (p[1] - a[1]) * ay) / L2))
+    return math.hypot(p[0] - a[0] - t * ax, p[1] - a[1] - t * ay)
+
+
 def rectangle(poly):
     """Le bâtiment du cadastre ramené à 4 coins (rectangle orienté qui l'englobe au mieux)."""
     best = None
@@ -82,13 +88,18 @@ def construire(commande, photos_dir, lire_photos=True):
     parcelles = wfs("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle", x, y)
     batis = wfs("CADASTRALPARCELS.PARCELLAIRE_EXPRESS:batiment", x, y)
     polys = [(p["properties"], anneau(p, ox, oy)) for p in parcelles]
-    # la parcelle du client : celle qui contient le point d'adresse, sinon la plus proche ayant un bâtiment
-    cand = [pp for pp in polys if dans(pt, pp[1])] or sorted(polys, key=lambda pp: D.dist(pt, D.centroid(pp[1])))
-    props, parcelle = cand[0]
     bats = [anneau(b, ox, oy) for b in batis]
-    siens = sorted([b for b in bats if dans(D.centroid(b), parcelle)], key=lambda b: -abs(sum(
-        (p[0] * q[1] - q[0] * p[1]) for p, q in D.edges(b))))
-    if not siens: raise SystemExit("Aucun bâtiment du cadastre sur la parcelle : dossier à faire à la main.")
+    aire = lambda b: abs(sum(p[0] * q[1] - q[0] * p[1] for p, q in D.edges(b)))
+    # La parcelle du client : celle qui contient le point d'adresse et porte un bâtiment ; sinon la plus
+    # proche qui en porte un (le point d'adresse tombe souvent sur la limite côté rue).
+    batie = [pp for pp in polys if any(dans(D.centroid(b), pp[1]) for b in bats)]
+    cand = [pp for pp in batie if dans(pt, pp[1])]
+    if not cand:
+        cand = sorted(batie, key=lambda pp: min(dist_segment(pt, a, b) for a, b in D.edges(pp[1])))
+        if cand: a_verifier.append("Le point d'adresse est hors parcelle : parcelle bâtie la plus proche retenue, à vérifier.")
+    if not cand: raise ValueError("Aucun bâtiment du cadastre près de l'adresse : dossier à faire à la main.")
+    props, parcelle = cand[0]
+    siens = sorted([b for b in bats if dans(D.centroid(b), parcelle)], key=lambda b: -aire(b))
     maison = rectangle(siens[0])
     if len(siens) > 1: a_verifier.append(f"{len(siens)} bâtiments sur la parcelle : le plus grand est pris comme maison.")
 

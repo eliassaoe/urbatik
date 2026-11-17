@@ -71,7 +71,7 @@ def main():
 if __name__ == "__main__":
     try:
         main(); print("dossier généré et déposé")
-    except Exception as e:
+    except BaseException as e:
         detail = "".join(traceback.format_exception_only(type(e), e)).strip()[:400]
         try: appel("echec", message=detail)
         except Exception: pass
