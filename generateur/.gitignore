@@ -1,2 +1,3 @@
 exemples/*.json
 sortie/
+__pycache__/
