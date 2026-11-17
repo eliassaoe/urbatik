@@ -13,7 +13,7 @@
 // Facultatifs :
 //   DODO_CHECKOUT_BASE    https://checkout.dodopayments.com/buy/ (test : https://test.checkout.dodopayments.com/buy/)
 //   SITE_URL              https://urbatik.com
-//   CALL_URL              lien Calendly 15 min
+//   CALL_URL              lien WhatsApp du conseiller (wa.me), plus Calendly depuis le 17 nov. 2026
 // Générateur de dossiers (secrets Supabase) :
 //   OPENROUTER_API_KEY    lecture des photos de façade + photomontage DP6 (fonction dossier-ia)
 //   GITHUB_DISPATCH_TOKEN jeton GitHub (droit « Contents: write » sur eliassaoe/urbatik seulement)
@@ -28,7 +28,7 @@ let SETTINGS: Record<string, string> = {};
 export const env = (k: string, fallback = ''): string => Deno.env.get(k) || SETTINGS[k] || fallback;
 
 export let SITE_URL = 'https://urbatik.com';
-export let CALL_URL = 'https://calendly.com/hamoureliasse/appel-avec-urbatik';
+export let CALL_URL = 'https://wa.me/33626344475?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20un%20dossier%20de%20mairie.';
 
 // À appeler au début de chaque requête : lit `dossier_settings` (clé service, la RLS bloque le reste).
 export async function loadSettings(): Promise<void> {
@@ -40,7 +40,7 @@ export async function loadSettings(): Promise<void> {
         console.error('dossier_settings illisible', e);
     }
     SITE_URL = env('SITE_URL', 'https://urbatik.com').replace(/\/$/, '');
-    CALL_URL = env('CALL_URL', 'https://calendly.com/hamoureliasse/appel-avec-urbatik');
+    CALL_URL = env('CALL_URL', 'https://wa.me/33626344475?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20un%20dossier%20de%20mairie.');
 }
 export const DELAI = "7 jours après réception de toutes les informations";
 export const BUCKET = 'dossiers';

@@ -34,8 +34,8 @@ function message(step: number, prenom: string, site: string, call: string): { su
     if (step === 0) {
         return {
             subject: 'Votre dossier de mairie est prêt à partir',
-            html: shell(`<p>${esc(hello)}</p><p>Vous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier (Cerfa, plans, photomontage, notice) et vous le recevez en 7 jours.</p>${btn(order, 'Valider mon dossier')}<p>Remboursé si la mairie refuse. Une question ? <a href="${esc(call)}">Parlons-en 15 minutes</a>.</p>`),
-            text: `${hello}\n\nVous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier et vous le recevez en 7 jours.\n\nValider mon dossier : ${order}\n\nRemboursé si la mairie refuse. Une question ? 15 minutes : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
+            html: shell(`<p>${esc(hello)}</p><p>Vous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier (Cerfa, plans, photomontage, notice) et vous le recevez en 7 jours.</p>${btn(order, 'Valider mon dossier')}<p>Remboursé si la mairie refuse. Une question ? <a href="${esc(call)}">Écrivez-nous sur WhatsApp</a>.</p>`),
+            text: `${hello}\n\nVous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier et vous le recevez en 7 jours.\n\nValider mon dossier : ${order}\n\nRemboursé si la mairie refuse. Une question ? WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
         };
     }
     if (step === 1) {
@@ -62,9 +62,9 @@ function nurture(step: number, site: string, call: string): { subject: string; h
         ['Comment on prépare vos dossiers de mairie',
          `En 3 étapes : 1. vous décrivez le chantier et ajoutez 3 photos ; 2. on vérifie les règles du PLU de la commune ; 3. notre bureau d'études partenaire réalise le dossier complet, prêt à déposer. Prix fixe, annoncé avant de payer.`,
          'Voir les tarifs'],
-        ['15 minutes pour regarder votre prochain chantier ?',
-         `Si vous avez un projet en vue (pergola, véranda, abri, piscine, clôture…), on peut regarder ensemble en 15 minutes s'il faut une déclaration ou un permis, et ce que la mairie va demander.`,
-         'Réserver 15 minutes'],
+        ['Une question sur votre prochain chantier ?',
+         `Si vous avez un projet en vue (pergola, véranda, abri, piscine, clôture…), écrivez-nous sur WhatsApp : on vous dit s'il faut une déclaration ou un permis, et ce que la mairie va demander.`,
+         'Écrire sur WhatsApp'],
         ['Pas de chantier en ce moment ?',
          `Pas de souci. Gardez cet email : le jour où un client signe, votre dossier de mairie se lance en 2 minutes. Beaucoup d'artisans l'ajoutent directement à leurs devis : « démarches mairie incluses, dossier sous 7 jours ».`,
          'Lancer un dossier'],
@@ -76,13 +76,13 @@ function nurture(step: number, site: string, call: string): { subject: string; h
          'Lancer un dossier'],
     ];
     const [subject, body, label] = T[step];
-    const href = label === 'Voir les tarifs' ? tarifs : label === 'Réserver 15 minutes' ? call : order;
-    const extra = label === 'Réserver 15 minutes' ? `<p>Ou lancez directement votre dossier : <a href="${esc(order)}">2 minutes en ligne</a>.</p>`
-        : `<p>Une question ? <a href="${esc(call)}">Parlons-en 15 minutes</a>.</p>`;
+    const href = label === 'Voir les tarifs' ? tarifs : label === 'Écrire sur WhatsApp' ? call : order;
+    const extra = label === 'Écrire sur WhatsApp' ? `<p>Ou lancez directement votre dossier : <a href="${esc(order)}">2 minutes en ligne</a>.</p>`
+        : `<p>Une question ? <a href="${esc(call)}">Écrivez-nous sur WhatsApp</a>.</p>`;
     return {
         subject,
         html: shell(`<p>Bonjour,</p><p>${esc(body)}</p>${btn(href, label)}${extra}`),
-        text: `Bonjour,\n\n${body}\n\n${label} : ${href}\nUne question ? 15 minutes : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
+        text: `Bonjour,\n\n${body}\n\n${label} : ${href}\nUne question ? WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
     };
 }
 
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     if (req.method !== 'POST') return json({ error: 'method' }, 405);
     if (!env('CRON_TOKEN') || req.headers.get('x-cron-token') !== env('CRON_TOKEN')) return json({ error: 'forbidden' }, 403);
     const site = env('SITE_URL', 'https://urbatik.com').replace(/\/$/, '');
-    const call = env('CALL_URL', 'https://calendly.com/hamoureliasse/appel-avec-urbatik');
+    const call = env('CALL_URL', 'https://wa.me/33626344475?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20un%20dossier%20de%20mairie.');
     const hook = env('N8N_EMAIL_WEBHOOK');
     if (!hook) return json({ error: 'N8N_EMAIL_WEBHOOK absent' }, 503);
 

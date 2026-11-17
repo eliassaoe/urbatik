@@ -116,7 +116,7 @@ function emailClient(o: Record<string, any>, missing: string[]): Promise<boolean
 <p>Votre dossier arrive en <strong>${DELAI}</strong>. Satisfait ou remboursé pendant 40 jours.</p>
 ${manque}
 <p><a href="${esc(lien)}" style="display:inline-block;background:#0b0b0c;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">Suivre mon dossier et ajouter des fichiers</a></p>
-<p>Une question ? <a href="${esc(CALL_URL)}">Réservez 15 minutes</a>.</p>
+<p>Une question ? <a href="${esc(CALL_URL)}">Écrivez-nous sur WhatsApp</a>.</p>
 <p style="background:#f6f6f7;border-radius:8px;padding:12px"><strong>Aucuns travaux ne doivent commencer avant l'accord de la mairie et l'affichage sur le terrain.</strong></p>
 <p>Ce lien de suivi est personnel : ne le transférez pas.</p>`);
     const text = [
@@ -125,7 +125,7 @@ ${manque}
         `Votre dossier arrive en ${DELAI}. Satisfait ou remboursé pendant 40 jours.`, '',
         ...(missing.length ? ["Ce qu'il nous manque encore :", ...missing.map(m => `- ${m}`), 'Ajoutez-le depuis votre lien de suivi.'] : ["Nous avons tout ce qu'il faut pour commencer."]),
         '', `Suivre mon dossier et ajouter des fichiers : ${lien}`,
-        `Une question ? Réservez 15 minutes : ${CALL_URL}`, '',
+        `Une question ? Écrivez-nous sur WhatsApp : ${CALL_URL}`, '',
         "Aucuns travaux ne doivent commencer avant l'accord de la mairie et l'affichage sur le terrain.", '',
         'Ce lien de suivi est personnel : ne le transférez pas.',
     ].join('\n');

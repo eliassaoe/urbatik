@@ -40,10 +40,10 @@ Deno.serve(async (req) => {
 <ul>${missing.map(m => `<li>${esc(m)}</li>`).join('')}</ul>
 <p>Une photo prise au téléphone suffit. Votre dossier arrive en 7 jours dès qu'on les a.</p>
 <p><a href="${esc(lien)}" style="display:inline-block;background:#0b0b0c;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">Ajouter mes photos</a></p>
-<p>Un souci pour les prendre ? <a href="${esc(CALL_URL)}">Réservez 15 minutes</a>, on trouve une solution.</p>`);
+<p>Un souci pour les prendre ? <a href="${esc(CALL_URL)}">Écrivez-nous sur WhatsApp</a>, on trouve une solution.</p>`);
         const text = [`Bonjour ${o.contact_nom},`, '', `Pour commencer votre ${label.toLowerCase()} (${o.adresse_chantier}, ${o.ville}), il nous manque encore :`,
             ...missing.map(m => `- ${m}`), '', "Une photo prise au téléphone suffit. Votre dossier arrive en 7 jours dès qu'on les a.", '',
-            `Ajouter mes photos : ${lien}`, `Un souci ? Réservez 15 minutes : ${CALL_URL}`].join('\n');
+            `Ajouter mes photos : ${lien}`, `Un souci ? Écrivez-nous sur WhatsApp : ${CALL_URL}`].join('\n');
         const ok = await sendEmail(o.contact_email, `Il nous manque vos photos – ${o.ville}`, html, text);
         if (ok) {
             await db.from('orders').update({ photo_reminders_sent: o.photo_reminders_sent + 1, last_photo_reminder_at: new Date().toISOString() }).eq('id', o.id);
