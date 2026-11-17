@@ -7,7 +7,7 @@ dans Supabase), puis le PDF est déposé dans le stockage privé.
 Le dépôt est public, donc les journaux d'Actions aussi : ce script n'écrit RIEN de la commande
 (ni nom, ni adresse, ni erreur détaillée) dans la sortie. Le détail d'un échec part à Supabase seulement.
 """
-import io, json, os, sys, tempfile, traceback, urllib.request
+import io, json, os, sys, tempfile, time, traceback, urllib.error, urllib.request
 
 sys.path.insert(0, os.path.dirname(__file__))
 import dossier as D, depuis_commande as C, photomontage as P, vision as V
@@ -29,7 +29,11 @@ def detail(e):
 
 
 def telecharger(url):
-    return urllib.request.urlopen(url, timeout=120).read()
+    for i in range(4):
+        try: return urllib.request.urlopen(url, timeout=120).read()
+        except (urllib.error.URLError, ConnectionError, TimeoutError):
+            if i == 3: raise
+            time.sleep(3 * (i + 1))
 
 
 def en_png(octets, sortie):

@@ -10,7 +10,7 @@ commande.json = la ligne `orders` (avec `fiche_technique`). photos/ = les fichie
 nommés par leur sorte (photo_facade.jpg, facade_arriere.jpg…).
 Ne devine rien sans le dire : chaque valeur déduite est listée dans `_a_verifier` pour le relecteur.
 """
-import json, math, os, sys, urllib.parse, urllib.request
+import json, math, os, sys, urllib.error, urllib.parse, urllib.request
 
 import dossier as D
 
@@ -26,8 +26,14 @@ LIBELLE = {"veranda": "Construction d'une véranda", "pergola": "Installation d'
            "solaire_sol": "Installation de panneaux solaires au sol", "menuiseries": "Modification des menuiseries"}
 
 
-def get_json(url):
-    return json.loads(urllib.request.urlopen(url, timeout=30).read())
+def get_json(url, essais=4):
+    """Les services publics (IGN, adresse) coupent parfois une connexion : on réessaie."""
+    import time
+    for i in range(essais):
+        try: return json.loads(urllib.request.urlopen(url, timeout=40).read())
+        except (urllib.error.URLError, ConnectionError, TimeoutError):
+            if i == essais - 1: raise
+            time.sleep(3 * (i + 1))
 
 
 def geocoder(adresse):
