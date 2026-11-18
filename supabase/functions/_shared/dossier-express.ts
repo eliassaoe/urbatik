@@ -43,6 +43,13 @@ export async function loadSettings(): Promise<void> {
     CALL_URL = env('CALL_URL', 'https://wa.me/33626344475?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20un%20dossier%20de%20mairie.');
 }
 export const DELAI = "72 h (jours ouvrés) après réception de toutes les informations";
+// Suivi jusqu'à l'accord de la mairie (18 nov. 2026, docs/suivi-mairie.md) : après la livraison, la page /suivi
+// demande « La mairie a accepté ? Oui / Non ». Sans réponse, le dossier est considéré accepté au bout de
+// PRESUME_JOURS et clos ; « Non » reste possible pendant NON_POSSIBLE_JOURS et remet le dossier en travail.
+export const PRESUME_JOURS = 30;
+export const RAPPEL_JOURS = 21;
+export const NON_POSSIBLE_JOURS = 180;
+export const SUIVI_MAIRIE = "On suit votre dossier jusqu'à l'accord de la mairie. Si elle demande une pièce ou refuse, on retravaille le dossier sans frais.";
 export const BUCKET = 'dossiers';
 export const MAX_FILE_BYTES = 15 * 1024 * 1024;
 export const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
@@ -91,6 +98,7 @@ export const FILE_KINDS: Record<string, string> = {
     photo_rue: 'Photo de la vue depuis la rue',
     plan_ou_devis: 'Plan, croquis ou devis',
     complement: 'Document complémentaire',
+    courrier_mairie: 'Courrier de la mairie',
 };
 
 export const REQUIRED_PHOTOS = ['photo_facade', 'photo_ensemble', 'photo_rue'];

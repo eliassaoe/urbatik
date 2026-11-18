@@ -11,9 +11,9 @@
 
     const STATUS = {
         en_attente_paiement: 'Non payée', payee: 'Payée', en_preparation: 'En préparation',
-        en_relecture: 'En relecture', livree: 'Livrée', deposee: 'Déposée', annulee: 'Annulée', remboursee: 'Remboursée',
+        en_relecture: 'En relecture', livree: 'Livrée', deposee: 'Déposée en mairie', a_retravailler: '⚠ Mairie : non, à retravailler', accordee: '✅ Accordée', refusee: '⛔ Refusée', annulee: 'Annulée', remboursee: 'Remboursée',
     };
-    const PILL = { payee: 'wait', en_preparation: 'wait', en_relecture: 'wait', livree: 'ok', deposee: 'ok', annulee: 'off', remboursee: 'off', en_attente_paiement: 'off' };
+    const PILL = { payee: 'wait', en_preparation: 'wait', en_relecture: 'wait', livree: 'wait', deposee: 'wait', a_retravailler: 'wait', accordee: 'ok', refusee: 'off', annulee: 'off', remboursee: 'off', en_attente_paiement: 'off' };
     const TYPES = { dp: 'Déclaration préalable', pc: 'Permis de construire', a_determiner: 'À déterminer (payé DP)' };
     const OUVRAGES = { veranda: 'Véranda', extension: 'Extension', pergola: 'Pergola', carport: 'Carport', abri_jardin: 'Abri de jardin',
         piscine: 'Piscine', solaire_toiture: 'Solaire en toiture', solaire_sol: 'Solaire au sol', menuiseries: 'Menuiseries', cloture: 'Clôture' };

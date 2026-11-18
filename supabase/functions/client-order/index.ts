@@ -9,7 +9,7 @@
 
 import {
     admin, json, loadSettings, CORS, env, TYPES, OUVRAGES, FILE_KINDS, BUCKET, MAX_FILE_BYTES, ALLOWED_TYPES, SITE_URL, CALL_URL,
-    DELAI, missingItems, safeName, sendEmail, emailShell, esc, TypeDossier,
+    DELAI, PRESUME_JOURS, NON_POSSIBLE_JOURS, SUIVI_MAIRIE, missingItems, safeName, sendEmail, emailShell, esc, TypeDossier,
     FICHE, validerFiche, ficheManquants, facadesAttendues, FICHE_LIBELLE, lancerGeneration,
 } from '../_shared/dossier-express.ts';
 
@@ -20,6 +20,9 @@ const STATUS_LABEL: Record<string, string> = {
     en_relecture: 'En relecture par un professionnel',
     livree: 'Dossier livré',
     deposee: 'Déposé en mairie',
+    a_retravailler: 'Réponse de la mairie reçue : on retravaille votre dossier',
+    accordee: 'Accordé par la mairie',
+    refusee: 'Refusé par la mairie',
     annulee: 'Annulée',
     remboursee: 'Remboursée',
 };
@@ -48,6 +51,10 @@ Deno.serve(async (req) => {
             type_ouvrage: OUVRAGES[o.type_ouvrage] ?? o.type_ouvrage,
             dimensions: `${o.dimensions} · surface ${o.surface_m2} m² · hauteur ${o.hauteur_m} m`,
             delai: DELAI,
+            suivi_mairie: SUIVI_MAIRIE,
+            livree_at: o.livree_at, decision_at: o.decision_at, decision_presumee: o.decision_presumee,
+            presume_jours: PRESUME_JOURS,
+            non_possible: !!o.livree_at && Date.now() < new Date(o.livree_at).getTime() + NON_POSSIBLE_JOURS * 86_400_000,
             missing: missingItems(o, (files ?? []).map(f => f.kind)),
             files: (files ?? []).map(f => ({ kind: FILE_KINDS[f.kind] ?? f.kind, filename: f.filename, created_at: f.created_at })),
             call_url: CALL_URL,
@@ -79,6 +86,34 @@ Deno.serve(async (req) => {
         // Tout est là (fiche + photos) : le générateur prépare le dossier, le relecteur n'a plus qu'à relire.
         if (!manquants.length) await lancerGeneration(db, { ...o, fiche_technique: fusion });
         return json({ ok: true, manquants });
+    }
+
+    // Suivi mairie : « La mairie a accepté ? Oui / Non ». Oui clôt le dossier. Non le remet en travail
+    // (on le reprend sans frais), même après la clôture automatique, et prévient le gérant tout de suite.
+    if (body.action === 'mairie') {
+        const rep = String(body.reponse ?? '');
+        if (!['oui', 'non'].includes(rep)) return json({ error: 'reponse' }, 422);
+        const now = new Date().toISOString();
+        const note = String(body.note ?? '').trim().slice(0, 1500);
+        let patch: Record<string, unknown>;
+        if (rep === 'oui') {
+            if (!['livree', 'deposee', 'a_retravailler', 'accordee'].includes(o.status)) return json({ error: 'statut', status: o.status }, 409);
+            patch = { status: 'accordee', decision_at: now, decision_presumee: false };
+        } else {
+            const ouvert = o.livree_at && Date.now() < new Date(o.livree_at).getTime() + NON_POSSIBLE_JOURS * 86_400_000;
+            if (!['livree', 'deposee', 'accordee', 'a_retravailler'].includes(o.status) || !ouvert) return json({ error: 'statut', status: o.status }, 409);
+            patch = { status: 'a_retravailler', decision_at: null, decision_presumee: false, mairie_reminders_sent: 0 };
+        }
+        patch.updated_at = now;
+        if (note) patch.admin_notes = `[${now.slice(0, 10)} client, mairie ${rep}] ${note}\n` + (o.admin_notes ?? '');
+        const { error } = await db.from('orders').update(patch).eq('id', o.id);
+        if (error) { console.error(error); return json({ error: 'db' }, 500); }
+        const lien = `${SITE_URL}/admin/dossiers#${o.id}`;
+        const titre = rep === 'oui' ? '✅ ACCORDÉ par la mairie' : '⚠ MAIRIE : NON, dossier à retravailler';
+        await sendEmail(env('ADMIN_EMAIL'), `${titre} – ${o.entreprise} – ${o.ville}`,
+            emailShell(`<p><strong>${esc(titre)}</strong> : ${esc(o.contact_nom)} (${esc(o.entreprise)}, ${esc(o.contact_tel ?? '')}), ${esc(o.adresse_chantier)}, ${esc(o.ville)}.</p>${note ? `<p>Ce que dit la mairie : ${esc(note)}</p>` : ''}<p><a href="${esc(lien)}">Ouvrir le dossier</a></p>`),
+            `${titre} : ${o.contact_nom} (${o.entreprise}), ${o.ville}. ${note}\n${lien}`);
+        return json({ ok: true, status: patch.status });
     }
 
     // Avis client (demandé par email à la livraison) : publié seulement après validation dans l'admin.

@@ -63,6 +63,12 @@
         <div id="ficheBody"></div>
         <div class="actions"><button class="btn" type="submit" id="ficheSave">Enregistrer la fiche</button><span class="small" id="ficheMsg" aria-live="polite"></span></div>
       </form>
+      <div class="card" id="mairieCard" hidden>
+        <h2>🏛️ La mairie a accepté ?</h2>
+        <p class="muted small" id="mairieTxt" style="margin:-6px 0 10px"></p>
+        <div id="mairieBody"></div>
+        <p class="small" id="mairieMsg" aria-live="polite"></p>
+      </div>
       <div class="card">
         <h2>Avancement</h2>
         <ol class="steps" id="steps"></ol>
@@ -99,7 +105,7 @@ const PHOTO = {
   photo_emplacement: ["", "📍", "L'endroit exact où sera l'ouvrage, de près"],
 };
 let LABEL_TO_KIND = Object.fromEntries(Object.entries(PHOTO).map(([k, v]) => [v[0], k]));
-const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en préparation"], ["en_relecture", "Relecture par un professionnel"], ["livree", "Dossier livré"], ["deposee", "Déposé en mairie"]];
+const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en préparation"], ["en_relecture", "Relecture par un professionnel"], ["livree", "Dossier livré"], ["accordee", "Accordé par la mairie"]];
 (function () {
   const token = new URLSearchParams(location.search).get("token") || "";
   const $ = id => document.getElementById(id);
@@ -132,6 +138,49 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
     }
   }
 
+  // Suivi mairie (18 nov. 2026, docs/suivi-mairie.md) : « La mairie a accepté ? Oui / Non ».
+  // Sans réponse, le dossier est considéré accepté au bout de 30 jours ; « Non » reste possible ensuite.
+  function renderMairie(d) {
+    const card = $("mairieCard"), body = $("mairieBody"); body.textContent = "";
+    const actif = ["livree", "deposee", "a_retravailler", "accordee"].includes(d.status) && d.livree_at;
+    card.hidden = !actif; if (!actif) return;
+    const txt = $("mairieTxt");
+    const fmt = x => new Date(x).toLocaleDateString("fr-FR");
+    const btn = (label, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = label; b.style.margin = "4px 8px 4px 0"; b.addEventListener("click", fn); return b; };
+    const formNon = () => {
+      body.textContent = "";
+      const t = document.createElement("textarea"); t.id = "nonNote"; t.rows = 3; t.placeholder = "Ce que demande la mairie (pièce manquante, motif du refus…)"; t.style.width = "100%";
+      const l = document.createElement("label"); l.className = "btn2"; l.style.cssText = "position:relative;display:inline-block;margin:8px 8px 4px 0"; l.textContent = "+ Joindre le courrier de la mairie";
+      const i = document.createElement("input"); i.type = "file"; i.accept = "image/*,application/pdf"; i.style.cssText = "position:absolute;inset:0;opacity:0;cursor:pointer";
+      i.addEventListener("change", e => { const f = e.target.files[0]; if (f) { pendingFile = f; l.firstChild.textContent = "✓ " + f.name; } }); l.appendChild(i);
+      body.append(t, l, btn("Envoyer : on retravaille mon dossier", "btn", () => mairie("non", { note: $("nonNote").value })));
+    };
+    const ouiNon = () => body.append(
+      btn("Oui, accepté ✅", "btn", () => mairie("oui", {})),
+      btn("Non : pièce demandée ou refus", "btn2", formNon));
+    if (d.status === "a_retravailler") { txt.textContent = "Bien reçu : on retravaille votre dossier sans frais et on vous le renvoie. Ajoutez le courrier de la mairie dans « Fichiers reçus » si ce n'est pas déjà fait."; return; }
+    if (d.status === "accordee") {
+      txt.textContent = d.decision_presumee
+        ? `Dossier clos le ${fmt(d.decision_at)} : sans nouvelle de votre part, on a considéré que la mairie a accepté. Si ce n'est pas le cas, cliquez Non : on retravaille le dossier sans frais.`
+        : "✅ Accordé par la mairie. Pensez à afficher le panneau sur le terrain avant de commencer les travaux.";
+      if (d.non_possible) body.append(btn("Non, la mairie n'a pas accepté", "btn2", formNon));
+      return;
+    }
+    const fin = new Date(new Date(d.livree_at).getTime() + (d.presume_jours || 30) * 86400000);
+    txt.textContent = `${d.suivi_mairie || ""} La mairie a accepté ? Sans réponse de votre part, on considère que oui le ${fmt(fin)}, et vous pourrez toujours revenir dire non.`;
+    ouiNon();
+  }
+  let pendingFile = null;
+  async function mairie(reponse, extra) {
+    $("mairieMsg").textContent = "Enregistrement…";
+    try {
+      if (reponse === "non" && pendingFile) { await upload("courrier_mairie", pendingFile); pendingFile = null; }
+      await call(Object.assign({ action: "mairie", reponse }, extra));
+      track("dossier_express_mairie", { reponse });
+      $("mairieMsg").textContent = reponse === "oui" ? "Félicitations, c'est noté !" : "Bien reçu, on reprend votre dossier.";
+      await load();
+    } catch (e) { $("mairieMsg").textContent = "Échec, réessayez ou écrivez-nous sur WhatsApp."; }
+  }
   async function load() {
     try {
       const d = await call({ action: "get" });
@@ -162,7 +211,7 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
       other.forEach(m => { const p = document.createElement("p"); p.className = "note"; p.textContent = m + " : répondez à l'email de confirmation."; drops.appendChild(p); });
       $("missingCard").hidden = !d.missing.length;
 
-      const idx = STEPS.findIndex(s => s[0] === d.status);
+      const idx = STEPS.findIndex(s => s[0] === ({ a_retravailler: "livree", deposee: "livree", refusee: "livree" }[d.status] || d.status));
       const ol = $("steps"); ol.textContent = "";
       STEPS.forEach(([k, label], i) => {
         const li = document.createElement("li");
@@ -172,6 +221,7 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
         ol.appendChild(li);
       });
 
+      renderMairie(d);
       const recap = $("recap"); recap.textContent = "";
       [["Chantier", d.adresse], ["Travaux", d.type_ouvrage], ["Dimensions", d.dimensions], ["Livraison", d.delai]].forEach(([k, v]) => {
         const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v;

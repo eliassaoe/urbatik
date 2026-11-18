@@ -3,9 +3,13 @@
 // Appelée une fois par jour par pg_cron (job « dossier-relances-photos », 8 h UTC) avec l'en-tête
 // x-cron-token = CRON_TOKEN (dossier_settings). Relances à J+1, J+3 et J+7 après le paiement,
 // tant qu'il manque une des trois photos obligatoires. Déployer avec --no-verify-jwt.
+// + Suivi mairie (18 nov. 2026, docs/suivi-mairie.md) : après la livraison, la page /suivi demande
+//   « La mairie a accepté ? Oui / Non ». À livraison + RAPPEL_JOURS : un email pose la question. À livraison
+//   + PRESUME_JOURS sans réponse : le dossier passe en « accordee » (presumee) et un email dit qu'il reste
+//   possible de répondre « Non » (le dossier est alors retravaillé sans frais).
 
 import {
-    admin, json, loadSettings, env, FILE_KINDS, REQUIRED_PHOTOS, TYPES, suiviUrl, sendEmail, emailShell, esc, CALL_URL, TypeDossier,
+    admin, json, loadSettings, env, FILE_KINDS, REQUIRED_PHOTOS, TYPES, PRESUME_JOURS, RAPPEL_JOURS, suiviUrl, sendEmail, emailShell, esc, CALL_URL, TypeDossier,
 } from '../_shared/dossier-express.ts';
 
 const DAYS = [1, 3, 7];
@@ -50,5 +54,37 @@ Deno.serve(async (req) => {
             sent.push(o.id);
         }
     }
-    return json({ ok: true, sent: sent.length });
+    // Suivi mairie.
+    const { data: suivis } = await db.from('orders')
+        .select('id, status, contact_nom, contact_email, client_token, ville, adresse_chantier, livree_at, mairie_reminders_sent')
+        .in('status', ['livree', 'deposee']).not('livree_at', 'is', null).lt('mairie_reminders_sent', 2);
+    let mairie = 0;
+    const jour = 86_400_000;
+    for (const o of suivis ?? []) {
+        const n = o.mairie_reminders_sent;
+        const t0 = new Date(o.livree_at).getTime();
+        if (Date.now() < t0 + (n === 0 ? RAPPEL_JOURS : PRESUME_JOURS) * jour) continue;
+        const prenom = String(o.contact_nom ?? '').split(' ')[0];
+        const lien = suiviUrl(o.client_token);
+        const fin = new Date(t0 + PRESUME_JOURS * jour).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
+        let subject: string, corps: string, label: string;
+        if (n === 0 && Date.now() < t0 + PRESUME_JOURS * jour) {
+            subject = `La mairie de ${o.ville} a-t-elle accepté votre dossier ?`;
+            corps = `On suit votre dossier (${o.adresse_chantier}, ${o.ville}) jusqu'à l'accord de la mairie. A-t-elle accepté ? Répondez en un clic : Oui ou Non. Si elle demande une pièce ou refuse, cliquez Non : on retravaille le dossier sans frais. Sans réponse de votre part d'ici le ${fin}, on considère que c'est accepté, et vous pourrez toujours revenir cliquer Non ensuite.`;
+            label = 'Oui / Non : répondre';
+        } else {
+            await db.from('orders').update({ status: 'accordee', decision_at: new Date().toISOString(), decision_presumee: true }).eq('id', o.id);
+            subject = `Votre dossier de ${o.ville} est clos`;
+            corps = `Sans nouvelle de votre part, on considère que la mairie a accepté votre dossier (${o.adresse_chantier}, ${o.ville}) et on le clôt. Si ce n'est pas le cas, une pièce demandée ou un refus, cliquez simplement Non sur votre page de suivi : on retravaille le dossier sans frais.`;
+            label = 'Ma page de suivi';
+        }
+        const html = emailShell(`<p>Bonjour ${esc(prenom)},</p><p>${esc(corps)}</p>
+<p><a href="${esc(lien)}" style="display:inline-block;background:#0b0b0c;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">${esc(label)}</a></p>
+<p>Une question ? <a href="${esc(CALL_URL)}">Écrivez-nous sur WhatsApp</a>.</p>`);
+        const text = `Bonjour ${prenom},\n\n${corps}\n\n${label} : ${lien}\nWhatsApp : ${CALL_URL}`;
+        const envoye = await sendEmail(o.contact_email, subject, html, text);
+        await db.from('orders').update({ mairie_reminders_sent: n === 0 && subject.startsWith('La mairie') ? 1 : 2, last_mairie_reminder_at: new Date().toISOString() }).eq('id', o.id);
+        if (envoye) mairie++;
+    }
+    return json({ ok: true, sent: sent.length, mairie });
 });

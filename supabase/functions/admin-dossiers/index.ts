@@ -17,7 +17,7 @@
 
 import { admin, json, loadSettings, CORS, env, BUCKET, SITE_URL, sendEmail, emailShell, esc, TYPES, TypeDossier, lancerGeneration } from '../_shared/dossier-express.ts';
 
-const STATUSES = ['en_attente_paiement', 'payee', 'en_preparation', 'en_relecture', 'livree', 'deposee', 'annulee', 'remboursee'];
+const STATUSES = ['en_attente_paiement', 'payee', 'en_preparation', 'en_relecture', 'livree', 'deposee', 'a_retravailler', 'accordee', 'refusee', 'annulee', 'remboursee'];
 const DAYS_30 = 30 * 86_400_000;
 
 async function sign(msg: string): Promise<string> {
@@ -103,6 +103,11 @@ Deno.serve(async (req) => {
         if (typeof body.status === 'string') {
             if (!STATUSES.includes(body.status)) return json({ error: 'status' }, 422);
             patch.status = body.status;
+            const now = new Date().toISOString();
+            // Livré (ou re-livré après un « Non ») : la période « Oui / Non » repart de zéro.
+            if (body.status === 'livree') Object.assign(patch, { livree_at: now, mairie_reminders_sent: 0, decision_at: null, decision_presumee: false });
+            if (body.status === 'deposee') patch.deposee_at = now;
+            if (['accordee', 'refusee'].includes(body.status)) Object.assign(patch, { decision_at: now, decision_presumee: false });
         }
         if (typeof body.admin_notes === 'string') patch.admin_notes = body.admin_notes.slice(0, 20000);
         const { data: o, error } = await db.from('orders').update(patch).eq('id', String(body.id ?? '')).select('*').maybeSingle();
@@ -110,12 +115,14 @@ Deno.serve(async (req) => {
         // Livré : on demande un avis au client, une seule fois.
         if (o && o.status === 'livree' && !o.review_requested_at) {
             const lien = `${SITE_URL}/avis?token=${o.client_token}`;
+            const suivi = `${SITE_URL}/suivi?token=${o.client_token}`;
             const ok = await sendEmail(o.contact_email, 'Votre dossier est livré – un avis en 30 secondes ?', emailShell(`
 <p>Bonjour ${esc(String(o.contact_nom).split(' ')[0])},</p>
 <p>Votre ${esc(TYPES[o.type_dossier as TypeDossier].label.toLowerCase())} pour ${esc(o.ville)} est livré. Merci pour votre confiance.</p>
 <p>Votre avis aide d'autres artisans à nous choisir. Ça prend 30 secondes :</p>
-<p><a href="${esc(lien)}" style="display:inline-block;background:#0b0b0c;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">Donner mon avis</a></p>`),
-                `Votre dossier est livré. Votre avis en 30 secondes : ${lien}`);
+<p><a href="${esc(lien)}" style="display:inline-block;background:#0b0b0c;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">Donner mon avis</a></p>
+<p><strong>On vous suit jusqu'à l'accord de la mairie.</strong> Sur votre page de suivi, un bouton « La mairie a accepté ? Oui / Non ». Si elle demande une pièce ou refuse, cliquez « Non » : on retravaille le dossier sans frais. <a href="${esc(suivi)}">Ma page de suivi</a></p>`),
+                `Votre dossier est livré. Votre avis en 30 secondes : ${lien}\n\nOn vous suit jusqu'à l'accord de la mairie : si elle demande une pièce ou refuse, cliquez « Non » sur votre page de suivi, on retravaille le dossier sans frais. ${suivi}`);
             if (ok) await db.from('orders').update({ review_requested_at: new Date().toISOString() }).eq('id', o.id);
         }
         return json({ ok: true });
