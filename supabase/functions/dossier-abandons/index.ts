@@ -43,8 +43,8 @@ function message(step: number, prenom: string, site: string, call: string): { su
     if (step === 0) {
         return {
             subject: 'Votre dossier de mairie est prêt à partir',
-            html: shell(`<p>${esc(hello)}</p><p>Vous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier (Cerfa, plans, photomontage, notice) et vous le recevez en 48 h.</p>${btn(order, 'Valider mon dossier')}<p>Remboursé si la mairie refuse. Une question ? <a href="${esc(call)}">Écrivez-nous sur WhatsApp</a>.</p>`),
-            text: `${hello}\n\nVous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier et vous le recevez en 48 h.\n\nValider mon dossier : ${order}\n\nRemboursé si la mairie refuse. Une question ? WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
+            html: shell(`<p>${esc(hello)}</p><p>Vous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier (Cerfa, plans, photomontage, notice) et vous le recevez en 72 h.</p>${btn(order, 'Valider mon dossier')}<p>Remboursé si la mairie refuse. Une question ? <a href="${esc(call)}">Écrivez-nous sur WhatsApp</a>.</p>`),
+            text: `${hello}\n\nVous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier et vous le recevez en 72 h.\n\nValider mon dossier : ${order}\n\nRemboursé si la mairie refuse. Une question ? WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
         };
     }
     if (step === 1) {
@@ -56,7 +56,7 @@ function message(step: number, prenom: string, site: string, call: string): { su
     }
     return {
         subject: 'Pas de chantier en ce moment ?',
-        html: shell(`<p>${esc(hello)}</p><p>Pas de souci si le chantier n'est pas encore signé. Gardez cet email : le jour où un client vous demande une pergola, une véranda, un abri ou une piscine, votre dossier de mairie se lance en 2 minutes ici :</p>${btn(order, 'Lancer un dossier')}<p>Vous pouvez aussi l'ajouter à vos devis : « démarches mairie incluses, dossier sous 48 h ». Et si vous avez un doute sur un projet, <a href="${esc(call)}">écrivez-nous sur WhatsApp</a>, on vous dit s'il faut une déclaration ou un permis.</p>`),
+        html: shell(`<p>${esc(hello)}</p><p>Pas de souci si le chantier n'est pas encore signé. Gardez cet email : le jour où un client vous demande une pergola, une véranda, un abri ou une piscine, votre dossier de mairie se lance en 2 minutes ici :</p>${btn(order, 'Lancer un dossier')}<p>Vous pouvez aussi l'ajouter à vos devis : « démarches mairie incluses, dossier sous 72 h ». Et si vous avez un doute sur un projet, <a href="${esc(call)}">écrivez-nous sur WhatsApp</a>, on vous dit s'il faut une déclaration ou un permis.</p>`),
         text: `${hello}\n\nPas de souci si le chantier n'est pas encore signé. Gardez cet email : le jour où un client vous demande une pergola, une véranda, un abri ou une piscine, votre dossier se lance en 2 minutes : ${order}\n\nUn doute sur un projet ? WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
     };
 }
@@ -66,7 +66,7 @@ function nurture(step: number, site: string, call: string): { subject: string; h
     const tarifs = `${site}/tarifs?utm_source=relance&utm_medium=email&utm_content=n${step + 1}`;
     const T: [string, string, string][] = [
         ['Votre dossier de mairie en 2 minutes',
-         `Merci de votre visite sur Urbatik. Quand un chantier demande une déclaration préalable ou un permis, vous remplissez 2 minutes en ligne et on prépare tout le dossier : Cerfa, plans, photomontage, notice. Livré en 48 h, remboursé si la mairie refuse.`,
+         `Merci de votre visite sur Urbatik. Quand un chantier demande une déclaration préalable ou un permis, vous remplissez 2 minutes en ligne et on prépare tout le dossier : Cerfa, plans, photomontage, notice. Livré en 72 h, remboursé si la mairie refuse.`,
          'Lancer un dossier'],
         ['Comment on prépare vos dossiers de mairie',
          `En 3 étapes : 1. vous décrivez le chantier et ajoutez 3 photos ; 2. on vérifie les règles du PLU de la commune ; 3. notre bureau d'études partenaire réalise le dossier complet, prêt à déposer. Prix fixe, annoncé avant de payer.`,
@@ -78,10 +78,10 @@ function nurture(step: number, site: string, call: string): { subject: string; h
          `Plan de situation, plan de masse, façades avant et après, photomontage, notice et Cerfa rempli : c'est ce que vous recevez, prêt à déposer en mairie ou en ligne. Des exemples sont sur notre site.`,
          'Voir les tarifs'],
         ['Pas de chantier en ce moment ?',
-         `Pas de souci. Gardez cet email : le jour où un client signe, votre dossier de mairie se lance en 2 minutes. Beaucoup d'artisans l'ajoutent directement à leurs devis : « démarches mairie incluses, dossier sous 48 h ».`,
+         `Pas de souci. Gardez cet email : le jour où un client signe, votre dossier de mairie se lance en 2 minutes. Beaucoup d'artisans l'ajoutent directement à leurs devis : « démarches mairie incluses, dossier sous 72 h ».`,
          'Lancer un dossier'],
         ['Un chantier qui démarre bientôt ?',
-         `Avant de poser, il faut l'accord de la mairie, et l'instruction prend un mois pour une déclaration préalable. Plus le dossier part tôt, plus vite vous pouvez commencer. On le prépare en 48 h.`,
+         `Avant de poser, il faut l'accord de la mairie, et l'instruction prend un mois pour une déclaration préalable. Plus le dossier part tôt, plus vite vous pouvez commencer. On le prépare en 72 h.`,
          'Lancer un dossier'],
         ['Le dossier de mairie, c\'est souvent ce qui retarde le chantier',
          `Un dossier incomplet, c'est un mois de plus avant de poser. On vérifie le PLU de la commune avant de préparer le dossier, pour qu'il parte complet du premier coup.`,
@@ -93,7 +93,7 @@ function nurture(step: number, site: string, call: string): { subject: string; h
          `Pergola, véranda, abri, piscine, clôture : selon la surface et la commune, c'est une déclaration préalable (249 € HT) ou un permis (390 € HT). Si vous avez un doute sur un projet, écrivez-nous, on vous répond.`,
          'Écrire sur WhatsApp'],
         ['On reste là quand un dossier se présente',
-         `C'est notre dernier message. Le jour où une déclaration préalable ou un permis bloque un de vos chantiers, Urbatik le prépare pour vous en 48 h, remboursé si la mairie refuse.`,
+         `C'est notre dernier message. Le jour où une déclaration préalable ou un permis bloque un de vos chantiers, Urbatik le prépare pour vous en 72 h, remboursé si la mairie refuse.`,
          'Lancer un dossier'],
     ];
     const [subject, body, label] = T[step];
@@ -114,7 +114,7 @@ function replyNurture(step: number, prenom: string, site: string, call: string, 
     const hello = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
     const T: [string, string, string, string][] = [
         ['Suite à votre réponse : vos dossiers de mairie',
-         `Merci de nous avoir répondu il y a quelques jours. Pour rappel, on prépare les dossiers de mairie de vos chantiers (déclaration préalable, permis) : vous décrivez le chantier en 2 minutes en ligne, on s'occupe de tout le dossier, vous le recevez en 48 h.`,
+         `Merci de nous avoir répondu il y a quelques jours. Pour rappel, on prépare les dossiers de mairie de vos chantiers (déclaration préalable, permis) : vous décrivez le chantier en 2 minutes en ligne, on s'occupe de tout le dossier, vous le recevez en 72 h.`,
          'Voir comment ça marche', home],
         ['Ce que vous recevez, concrètement',
          `Un dossier complet, prêt à déposer : Cerfa rempli, plan de situation, plan de masse, façades, photomontage et notice. Vous pouvez voir des exemples sur notre site.`,
@@ -132,10 +132,10 @@ function replyNurture(step: number, prenom: string, site: string, call: string, 
          `Les clients signent en hiver pour poser au printemps, et la mairie prend un mois pour répondre. C'est le bon moment pour lancer les dossiers : 2 minutes en ligne, on s'occupe du reste.`,
          'Lancer un dossier', order],
         ['Ajoutez la mairie à vos devis',
-         `Beaucoup d'artisans l'écrivent directement dans leurs devis : « démarches mairie incluses, dossier sous 48 h ». Le client signe plus facilement, et c'est nous qui faisons le dossier.`,
+         `Beaucoup d'artisans l'écrivent directement dans leurs devis : « démarches mairie incluses, dossier sous 72 h ». Le client signe plus facilement, et c'est nous qui faisons le dossier.`,
          'Lancer un dossier', order],
         ['On reste là quand un dossier se présente',
-         `C'est notre dernier message. Le jour où une déclaration préalable ou un permis bloque un de vos chantiers, on le prépare en 48 h, remboursé si la mairie refuse.`,
+         `C'est notre dernier message. Le jour où une déclaration préalable ou un permis bloque un de vos chantiers, on le prépare en 72 h, remboursé si la mairie refuse.`,
          'Lancer un dossier', order],
     ];
     const [subject, body, label, href] = T[step];

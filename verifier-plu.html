@@ -110,7 +110,7 @@ footer a{color:var(--muted)}
   <div class="how">
     <div><strong>Le PLU officiel</strong><span>Lu sur le Géoportail de l'Urbanisme : la zone de la parcelle, le règlement, les secteurs protégés.</span></div>
     <div><strong>Règle par règle</strong><span>Hauteur, reculs, limites, emprise, aspect : chaque règle comparée à votre projet, article cité.</span></div>
-    <div><strong>Et si ça passe</strong><span>On fait le dossier complet en 48 h, prêt à déposer. Remboursé si la mairie refuse.</span></div>
+    <div><strong>Et si ça passe</strong><span>On fait le dossier complet en 72 h, prêt à déposer. Remboursé si la mairie refuse.</span></div>
   </div>
 </div>
 
@@ -198,7 +198,7 @@ const CONFIG = {
     if (r.faits && r.faits.reglement_url) { const a = el("a", "Lire le règlement du PLU (PDF officiel)"); a.href = r.faits.reglement_url; a.target = "_blank"; a.rel = "noopener"; a.className = "muted"; a.style.display = "block"; a.style.marginTop = "10px"; res.append(a); }
     const cta = el("div", "", "cta");
     if (r.verdict !== "non_viable" && r.verdict !== "inconnu") {
-      const b = el("a", "Faire le dossier : prêt en 48 h", "btn"); b.href = "/commande?utm_source=verif_plu";
+      const b = el("a", "Faire le dossier : prêt en 72 h", "btn"); b.href = "/commande?utm_source=verif_plu";
       b.addEventListener("click", () => {
         track("urbatik_plu_checker_order", { verdict: r.verdict });
         try { const d = JSON.parse(localStorage.getItem("dx_draft_v1") || "{}"); Object.entries(fields).forEach(([k, val]) => { if (val && k !== "type_dossier") d[k] = val; }); localStorage.setItem("dx_draft_v1", JSON.stringify(d)); } catch (x) {}
