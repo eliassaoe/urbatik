@@ -50,8 +50,8 @@ function message(step: number, prenom: string, site: string, call: string): { su
     if (step === 1) {
         return {
             subject: 'Une question avant de lancer votre dossier ?',
-            html: shell(`<p>${esc(hello)}</p><p>Souvent, ce qui retient, c'est une de ces questions :</p><ul><li><strong>Le prix ?</strong> Fixe et annoncé avant de payer : 249 € HT la déclaration préalable, 790 € HT le permis. <a href="${esc(site)}/tarifs">Voir ce qui est inclus</a>.</li><li><strong>Et si la mairie refuse ?</strong> On vous rembourse intégralement.</li><li><strong>Les photos ?</strong> Vous pouvez les envoyer après le paiement, depuis votre téléphone.</li></ul>${btn(order, 'Reprendre ma demande')}<p>Ou <a href="${esc(call)}">écrivez-nous sur WhatsApp</a> et on regarde votre chantier ensemble.</p>`),
-            text: `${hello}\n\nCe qui retient souvent :\n- Le prix : fixe, 249 € HT la déclaration préalable, 790 € HT le permis (${site}/tarifs)\n- Si la mairie refuse : on vous rembourse intégralement\n- Les photos : vous pouvez les envoyer après le paiement\n\nReprendre ma demande : ${order}\nOu sur WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
+            html: shell(`<p>${esc(hello)}</p><p>Souvent, ce qui retient, c'est une de ces questions :</p><ul><li><strong>Le prix ?</strong> Fixe et annoncé avant de payer : 249 € HT la déclaration préalable, 390 € HT le permis. <a href="${esc(site)}/tarifs">Voir ce qui est inclus</a>.</li><li><strong>Et si la mairie refuse ?</strong> On vous rembourse intégralement.</li><li><strong>Les photos ?</strong> Vous pouvez les envoyer après le paiement, depuis votre téléphone.</li></ul>${btn(order, 'Reprendre ma demande')}<p>Ou <a href="${esc(call)}">écrivez-nous sur WhatsApp</a> et on regarde votre chantier ensemble.</p>`),
+            text: `${hello}\n\nCe qui retient souvent :\n- Le prix : fixe, 249 € HT la déclaration préalable, 390 € HT le permis (${site}/tarifs)\n- Si la mairie refuse : on vous rembourse intégralement\n- Les photos : vous pouvez les envoyer après le paiement\n\nReprendre ma demande : ${order}\nOu sur WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
         };
     }
     return {
@@ -90,7 +90,7 @@ function nurture(step: number, site: string, call: string): { subject: string; h
          `Les clients signent en hiver pour poser au printemps. Comme la mairie prend un mois pour répondre, c'est le bon moment pour lancer les dossiers : 2 minutes en ligne, on s'occupe du reste.`,
          'Lancer un dossier'],
         ['Une déclaration ou un permis ?',
-         `Pergola, véranda, abri, piscine, clôture : selon la surface et la commune, c'est une déclaration préalable (249 € HT) ou un permis (790 € HT). Si vous avez un doute sur un projet, écrivez-nous, on vous répond.`,
+         `Pergola, véranda, abri, piscine, clôture : selon la surface et la commune, c'est une déclaration préalable (249 € HT) ou un permis (390 € HT). Si vous avez un doute sur un projet, écrivez-nous, on vous répond.`,
          'Écrire sur WhatsApp'],
         ['On reste là quand un dossier se présente',
          `C'est notre dernier message. Le jour où une déclaration préalable ou un permis bloque un de vos chantiers, Urbatik le prépare pour vous en 7 jours, remboursé si la mairie refuse.`,
@@ -120,7 +120,7 @@ function replyNurture(step: number, prenom: string, site: string, call: string, 
          `Un dossier complet, prêt à déposer : Cerfa rempli, plan de situation, plan de masse, façades, photomontage et notice. Vous pouvez voir des exemples sur notre site.`,
          'Voir des exemples', ex],
         ['Le prix, sans surprise',
-         `249 € HT la déclaration préalable, 790 € HT le permis de construire, prix fixe annoncé avant de payer. Si la mairie refuse le dossier, on vous rembourse.`,
+         `249 € HT la déclaration préalable, 390 € HT le permis de construire, prix fixe annoncé avant de payer. Si la mairie refuse le dossier, on vous rembourse.`,
          'Lancer un dossier', order],
         ['Un chantier en vue ?',
          `Le jour où un client signe une pergola, une véranda, un abri ou une piscine, gardez ce lien : la demande se fait en 2 minutes, et vos équipes restent sur les chantiers pendant qu'on s'occupe de la mairie.`,

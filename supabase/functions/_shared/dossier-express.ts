@@ -51,11 +51,11 @@ export type TypeDossier = 'dp' | 'pc' | 'a_determiner';
 
 // « Je ne sais pas » est facturé comme une déclaration préalable ; le complément
 // d'un permis éventuel est facturé à la main.
-// Prix HT (14 nov. 2026) : 249 € / 790 €. Offre « 10 minutes » : -30 % sur le premier dossier
-// (174 € / 553 €), via des produits Dodo dédiés pour qu'aucun code ne soit à saisir.
+// Prix HT : 249 € / 390 € (permis baissé de 790 à 390 € le 18 nov. 2026, aligné sur le bas du marché). Offre « 10 minutes » : -30 % sur le premier dossier
+// (174 € / 273 €), via des produits Dodo dédiés pour qu'aucun code ne soit à saisir.
 export const TYPES: Record<TypeDossier, { label: string; cents: number; offerCents: number; product: () => string; offerProduct: () => string }> = {
     dp: { label: 'Déclaration préalable', cents: 24900, offerCents: 17400, product: () => env('DODO_PRODUCT_DP'), offerProduct: () => env('DODO_PRODUCT_DP_OFFRE') },
-    pc: { label: 'Permis de construire (maison individuelle)', cents: 79000, offerCents: 55300, product: () => env('DODO_PRODUCT_PC'), offerProduct: () => env('DODO_PRODUCT_PC_OFFRE') },
+    pc: { label: 'Permis de construire (maison individuelle)', cents: 39000, offerCents: 27300, product: () => env('DODO_PRODUCT_PC'), offerProduct: () => env('DODO_PRODUCT_PC_OFFRE') },
     a_determiner: { label: 'À déterminer (facturé comme une déclaration préalable)', cents: 24900, offerCents: 17400, product: () => env('DODO_PRODUCT_DP'), offerProduct: () => env('DODO_PRODUCT_DP_OFFRE') },
 };
 
