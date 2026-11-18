@@ -27,6 +27,7 @@ Le site et tout ce qui le fait tourner vivent dans ce dépôt, plus rien dans `f
 | Tables (`orders`, `order_files`, `dossier_clients`, `dossier_avis`, `dossier_settings`…) | `supabase/migrations/` (déjà appliquées au projet `snxhsboboatjywgwdeds`) |
 | Réglages (SITE_URL = https://urbatik.com, produits Dodo, webhook n8n, mot de passe admin) | table privée `dossier_settings`, jamais dans ce dépôt public |
 | Réponses automatiques Explee (projet creha.fr 61157) | `docs/explee/` |
+| **Vérification du PLU avant paiement** : le formulaire bloque le paiement d'un projet non viable et explique quoi changer | `docs/plu-avant-paiement.md` |
 | **Relances longues** : 10 emails aux visiteurs, 8 aux prospects qui ont répondu (Explee), alerte « à appeler » au gérant quand un prospect revient | `docs/relances-longues.md` |
 
 Déploiement : chaque fonction se déploie avec `--no-verify-jwt` et le dossier `_shared` à côté.

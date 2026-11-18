@@ -91,6 +91,22 @@ textarea{resize:vertical;min-height:110px}
 .ticks li::before{content:"✓ ";color:var(--green);font-weight:700}
 .pay{width:100%;font-size:18px;padding:17px}
 [hidden]{display:none!important}
+.plu{border-radius:14px;padding:14px 16px;margin:0 0 16px;font-size:15px;border:1px solid var(--line)}
+.plu h3{margin:0 0 6px;font-size:16px}
+.plu p{margin:6px 0}
+.plu ul{margin:8px 0 0;padding-left:20px}
+.plu li{margin:4px 0}
+.plu small{color:var(--muted)}
+.plu.wait{background:#f6f7fb}
+.plu.ok{background:#eefaf1;border-color:#bfe5c9}
+.plu.warn{background:#fff8e6;border-color:#f3e1a8}
+.plu.ko{background:#fff0ef;border-color:#f2c4bf}
+.plu .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.plu .acts a,.plu .acts button{font:inherit;font-weight:600;border-radius:10px;padding:10px 14px;cursor:pointer;text-decoration:none}
+.plu .acts .b1{background:#0b0b0c;color:#fff;border:0}
+.plu .acts .b2{background:#fff;color:#0b0b0c;border:1px solid var(--line)}
+.plu .spin{display:inline-block;width:14px;height:14px;border:2px solid #c9ccd6;border-top-color:#0b0b0c;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
 </style>
 <script src="/js/site.js?v=2"></script>
 </head>
@@ -241,6 +257,7 @@ textarea{resize:vertical;min-height:110px}
     <h1>Dernière étape : envoyer la commande.</h1>
     <div class="recap" id="recap"></div>
     <p class="note-later" id="laterNote" hidden></p>
+    <div class="plu" id="plu" hidden aria-live="polite"></div>
     <div class="price">
       <div id="offerOn" hidden>
         <p class="offer-tag">⚡ Offre premier dossier : -30 % si vous commandez maintenant</p>
@@ -345,7 +362,7 @@ const DRAFT = "dx_draft_v1";
     bar.style.width = Math.round(((i + (isFinal ? 1 : 0)) / (steps.length - 1)) * 100) + "%";
     count.textContent = isFinal ? "Dernière étape" : `${i + 1} / ${steps.length - 1}`;
     if (s.dataset.key === "existant") document.getElementById("abri").hidden = form.type_ouvrage.value !== "piscine";
-    if (isFinal) renderFinal();
+    if (isFinal) { renderFinal(); pluStart(); pluRender(); }
     const first = s.querySelector("input:not([type=radio]):not([type=file]), textarea");
     if (first && matchMedia("(pointer:fine)").matches) setTimeout(() => first.focus(), 60);
     if (dir !== "init") window.scrollTo({ top: 0 });
@@ -368,7 +385,7 @@ const DRAFT = "dx_draft_v1";
     return true;
   }
 
-  function go() { if (valid(steps[i])) { save(); show(i + 1); } }
+  function go() { if (valid(steps[i])) { save(); if (steps[i].dataset.key === "existant") pluStart(); show(i + 1); } }
   next.addEventListener("click", go);
   skip.addEventListener("click", () => { save(); show(i + 1); });
   back.addEventListener("click", () => show(i - 1));
@@ -402,6 +419,85 @@ const DRAFT = "dx_draft_v1";
     if (e.key.length === 1 && idx >= 0 && idx < opts.length) { opts[idx].checked = true; opts[idx].dispatchEvent(new Event("change", { bubbles: true })); }
   });
 
+  // Vérification du PLU AVANT le paiement (fonction plu-check, 18 nov. 2026) : lancée dès que le projet est décrit,
+  // le résultat attend sur le dernier écran. Projet « non viable » → pas de paiement, on explique quoi changer.
+  const PLU_FIELDS = ["type_dossier", "type_ouvrage", "adresse_chantier", "code_postal", "ville", "surface_m2", "hauteur_m", "dimensions",
+    "distance_limites", "terrain_modifie", "materiaux", "couleurs", "surface_existante_m2", "piscine_abri_hauteur_m"];
+  const plu = { id: null, key: "", res: null, started: 0, timer: null };
+  function pluFields() { const f = {}; PLU_FIELDS.forEach(k => { const el = form.elements[k]; f[k] = el ? (el.value || "") : ""; }); return f; }
+  async function pluStart() {
+    const f = pluFields(), key = JSON.stringify(f);
+    if (key === plu.key || !f.adresse_chantier || !/^\d{5}$/.test(f.code_postal) || !f.type_ouvrage) return;
+    plu.key = key; plu.id = null; plu.res = null; plu.started = Date.now(); clearTimeout(plu.timer);
+    try { const r = await call("plu-check", { action: "start", fields: f }); if (plu.key !== key) return; plu.id = r.id || null; plu.res = r; }
+    catch (e) { plu.res = { status: "erreur", verdict: "inconnu" }; }
+    pluPoll();
+  }
+  function pluPoll() {
+    clearTimeout(plu.timer);
+    const done = plu.res && (plu.res.status === "pret" || plu.res.status === "erreur" || plu.res.status === "indisponible");
+    if (steps[i].dataset.key === "final") pluRender();
+    if (done || !plu.id) return;
+    if (Date.now() - plu.started > 180000) { plu.res = { status: "erreur", verdict: "inconnu" }; if (steps[i].dataset.key === "final") pluRender(); return; }
+    plu.timer = setTimeout(async () => {
+      try { plu.res = await call("plu-check", { action: "status", id: plu.id }); } catch (e) {}
+      pluPoll();
+    }, 4000);
+  }
+  function pluRender() {
+    const box = document.getElementById("plu");
+    const r = plu.res, ville = (form.elements.ville.value || "la commune");
+    const el = (tag, txt, cls) => { const x = document.createElement(tag); if (txt) x.textContent = txt; if (cls) x.className = cls; return x; };
+    box.hidden = false; box.textContent = ""; box.className = "plu";
+    const pending = !r || !["pret", "erreur", "indisponible"].includes(r.status);
+    btn.disabled = false;
+    if (pending) {
+      box.classList.add("wait");
+      const h = el("h3"); h.append(el("span", "", "spin"), document.createTextNode(`On vérifie votre projet avec le PLU de ${ville}…`)); box.append(h);
+      box.append(el("p", "Zone, hauteur, distances aux limites, aspect : on lit le règlement de la commune pour vous dire, avant de payer, si le projet passe. Moins d'une minute."));
+      btn.disabled = true; btn.textContent = "Vérification du PLU en cours…";
+      return;
+    }
+    const z = r.faits && r.faits.zone ? ` (zone ${r.faits.zone.code})` : "";
+    const res = r.resultat || {};
+    const v = r.verdict;
+    if (!plu.tracked || plu.tracked !== r.id) { plu.tracked = r.id; track("dossier_express_plu_result", { verdict: v || "inconnu", zone: r.faits && r.faits.zone ? r.faits.zone.code : null }); }
+    if (v === "non_viable") {
+      box.classList.add("ko");
+      box.append(el("h3", "⛔ En l'état, votre projet ne respecte pas le PLU" + z));
+      if (res.titre) { const t = el("p", res.titre); t.style.fontWeight = "600"; box.append(t); }
+      if (res.explication) box.append(el("p", res.explication));
+      if ((res.que_faire || []).length) { box.append(el("p", "Pour qu'il passe :")); const ul = el("ul"); res.que_faire.forEach(t => ul.append(el("li", t))); box.append(ul); }
+      box.append(el("p", "On préfère vous le dire maintenant plutôt que de vous faire payer un dossier que la mairie refuserait."));
+      const acts = el("div", "", "acts");
+      const mod = el("button", "Modifier mon projet", "b1"); mod.type = "button";
+      mod.addEventListener("click", () => { track("dossier_express_plu_modify"); show(steps.findIndex(s => s.dataset.key === "taille")); });
+      const wa = el("a", "En parler sur WhatsApp", "b2"); wa.href = CONFIG.call; wa.target = "_blank"; wa.rel = "noopener";
+      wa.addEventListener("click", () => track("dossier_express_click_whatsapp", { from: "plu_non_viable" }));
+      acts.append(mod, wa); box.append(acts);
+      btn.disabled = true; btn.textContent = "Projet à modifier avant de commander";
+      return;
+    }
+    setPrice(form.type_dossier.value || "dp", offerEnd && Date.now() < offerEnd);
+    if (v === "viable") {
+      box.classList.add("ok");
+      box.append(el("h3", "✅ Votre projet respecte le PLU" + z));
+      if (res.explication) box.append(el("p", res.explication));
+    } else if (v === "a_verifier") {
+      box.classList.add("warn");
+      box.append(el("h3", "🟠 Projet possible, avec des points à vérifier" + z));
+      if (res.titre) box.append(el("p", res.titre));
+      if (res.explication) box.append(el("p", res.explication));
+      if ((res.que_faire || []).length) { const ul = el("ul"); res.que_faire.slice(0, 5).forEach(t => ul.append(el("li", t))); box.append(ul); }
+      box.append(el("small", "On règle ces points avec vous avant de déposer. Et si la mairie refuse, on vous rembourse."));
+    } else {
+      box.classList.add("wait");
+      box.append(el("p", r.adresse_introuvable ? "Adresse non trouvée : on vérifiera le PLU dès réception de la commande, avant de préparer le dossier."
+        : "Le PLU sera vérifié dès réception de la commande, avant de préparer le dossier. Remboursé si la mairie refuse."));
+    }
+    if (r.faits && r.faits.abf) box.append(el("p", "⚠ Le terrain est dans un secteur protégé : l'Architecte des Bâtiments de France donne son avis, la mairie répond en 2 mois au lieu d'1."));
+  }
+
   function renderFinal() {
     const t = form.type_dossier.value || "dp";
     const v = n => (form.elements[n] && form.elements[n].value) || "";
@@ -434,6 +530,8 @@ const DRAFT = "dx_draft_v1";
   function setPrice(t, on) {
     document.getElementById("offerOn").hidden = !on;
     document.getElementById("offerOff").hidden = on;
+    const r = plu.res;
+    if (!r || !["pret", "erreur", "indisponible"].includes(r.status) || r.verdict === "non_viable") return; // le bouton reste celui du PLU
     document.getElementById("submit").textContent = `Payer ${on ? OFFER[t] : PRICES[t]} et envoyer`;
   }
   async function startOffer(t, email) {
@@ -490,6 +588,7 @@ const DRAFT = "dx_draft_v1";
   form.addEventListener("submit", async e => {
     e.preventDefault();
     errBox.textContent = "";
+    if (plu.res && plu.res.verdict === "non_viable") { pluRender(); return; }
     // Tout est-il rempli ? Sinon on renvoie à la première question incomplète.
     for (let k = 0; k < steps.length - 1; k++) {
       if ([...steps[k].querySelectorAll("[required]")].some(el => !el.checkValidity())) { show(k); valid(steps[k]); return; }
