@@ -3,6 +3,8 @@
 // avec son adresse) le fait remonter en haut, en vert, avec une alerte.
 (function () {
     'use strict';
+    // Ce navigateur est celui du gérant : le site ne doit plus le compter comme un prospect (voir js/site.js).
+    try { localStorage.setItem('urbatik_internal', '1'); localStorage.removeItem('urbatik_email'); } catch (e) {}
     const API = 'https://snxhsboboatjywgwdeds.supabase.co/functions/v1/admin-dossiers';
     const KEY = 'urbatik_admin_token';
     const REFRESH_MS = 20000;
@@ -12,7 +14,7 @@
     const CLOSED = ['client', 'perdu'];
 
     let token = ''; try { token = localStorage.getItem(KEY) || ''; } catch (e) {}
-    let filter = 'today', data = [], seen = null, editing = 0, notif = false;
+    let filter = 'prio', data = [], seen = null, editing = 0, notif = false;
     const waOpen = new Set(); // panneaux WhatsApp ouverts : restent ouverts au rafraîchissement
 
     const parisDay = d => new Date(d).toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
@@ -84,8 +86,27 @@
         return [p.last_visit_at, p.first_seen_at, p.crm_updated_at].some(d => d && parisDay(d) === t)
             || (p.crm_relance && p.crm_relance <= t && !p.crm_done_at && !CLOSED.includes(p.crm_status));
     }
+    // Priorité d'appel (18 nov. 2026, gérant : « les gens à appeler en priorité ») : les appels font les ventes ET
+    // apprennent ce que veulent les clients. Points : formulaire commencé, visites du site (récentes surtout),
+    // réponse à la prospection, rappel prévu aujourd'hui. Hors liste : clos, déjà fait, sans numéro, appelé aujourd'hui.
+    function score(p) {
+        const h = d => d ? (Date.now() - new Date(d).getTime()) / 3600000 : Infinity;
+        let s = 0;
+        if (p.offer_started_at) s += 6;                                   // allé jusqu'au dernier écran
+        s += Math.min(p.visits || 0, 4) * 2;                              // chaque visite du site
+        if (h(p.last_visit_at) < 48) s += 4; else if (h(p.last_visit_at) < 24 * 7) s += 2;
+        if (p.source === 'explee_reponse' || p.metier) s += 3;          // a répondu à la prospection
+        if (p.crm_relance && p.crm_relance <= today()) s += 5;           // rappel promis
+        if (p.crm_status === 'rdv') s += 4;
+        if (p.crm_status === 'pas_repondu') s -= 1;
+        return s;
+    }
+    const callable = p => p.tel && !p.crm_done_at && !CLOSED.includes(p.crm_status)
+        && !(p.crm_called_at && parisDay(p.crm_called_at) === today() && p.crm_call_result === 'ok')
+        && !(p.crm_relance && p.crm_relance > today());
     function visible() {
         let rows = data;
+        if (filter === 'prio') return rows.filter(callable).map(p => (p._score = score(p), p)).sort((a, b) => b._score - a._score);
         if (filter === 'today') rows = rows.filter(isToday);
         if (filter === 'visited') rows = rows.filter(p => p.last_visit_at);
         if (filter === 'todo') rows = rows.filter(p => !p.crm_done_at && !CLOSED.includes(p.crm_status));

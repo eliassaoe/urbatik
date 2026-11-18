@@ -3,6 +3,8 @@
 // Le navigateur n'a aucun accès direct aux tables : tout passe par la fonction (clé service côté serveur).
 (function () {
     'use strict';
+    // Ce navigateur est celui du gérant : le site ne doit plus le compter comme un prospect (voir js/site.js).
+    try { localStorage.setItem('urbatik_internal', '1'); localStorage.removeItem('urbatik_email'); } catch (e) {}
     const API = 'https://snxhsboboatjywgwdeds.supabase.co/functions/v1/admin-dossiers';
     const KEY = 'urbatik_admin_token';
     const $ = id => document.getElementById(id);

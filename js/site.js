@@ -12,6 +12,10 @@
   try {
     var url = new URL(location.href);
     var e = (url.searchParams.get("e") || url.searchParams.get("email") || "").trim().toLowerCase();
+    // Navigateur du gérant (il a ouvert /admin) : un clic sur le lien d'un prospect ne doit pas en faire ce prospect.
+    // Sinon ses propres visites comptent comme celles du prospect (vu le 18 nov. 2026 : « 4 visites » qui étaient les siennes).
+    var internal = false; try { internal = localStorage.getItem("urbatik_internal") === "1"; } catch (x) {}
+    if (internal) { if (ok(e)) { url.searchParams.delete("e"); url.searchParams.delete("email"); history.replaceState(null, "", url.pathname + (url.search || "") + url.hash); } e = ""; try { localStorage.removeItem(KEY); if (window.posthog) posthog.register({ internal: true }); } catch (x) {} }
     if (ok(e)) {
       try { localStorage.setItem(KEY, e); } catch (x) {}
       try {
