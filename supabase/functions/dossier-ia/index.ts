@@ -7,7 +7,8 @@
 //   {action:'photomontage', generation_id, token, prompt} → DP6 : le projet inséré dans la vue d'ensemble
 //   {action:'controle', generation_id, token}           → l'IA compare la photo et le photomontage : rien d'autre n'a changé ?
 //   {action:'depot_url', generation_id, token}          → URL d'envoi signée pour le PDF
-//   {action:'depot', generation_id, token, a_verifier}  → dossier prêt à relire, email à l'admin
+//   {action:'plu', generation_id, token, zone, texte, projet} → l'IA lit le règlement de la zone et le compare au projet
+//   {action:'depot', generation_id, token, a_verifier, plu} → dossier prêt à relire, email à l'admin
 //   {action:'echec', generation_id, token, message}     → échec, email à l'admin
 //
 // IA via OpenRouter (OPENROUTER_API_KEY). Modèles réglables dans dossier_settings :
@@ -155,6 +156,36 @@ Réponds uniquement en JSON : {"ok": true|false, "ecarts": ["…"], "proportions
         catch (e) { return json({ ok: false, ecarts: [`contrôle illisible (${(e as Error).message})`] }); }
     }
 
+    if (body.action === 'plu') {
+        if (g.appels_vision >= MAX_VISION) return json({ error: 'quota' }, 429);
+        await maj({ appels_vision: g.appels_vision + 1 });
+        const consigne = `Tu es instructeur d'autorisations d'urbanisme en mairie. Voici l'extrait du règlement du PLU pour la zone ${String(body.zone ?? '').slice(0, 120)}, puis le projet d'un client.
+Ta mission : dire si le projet respecte le règlement, règle par règle, AVANT qu'il soit déposé en mairie.
+Vérifie au minimum, quand le règlement en parle : destination autorisée dans la zone (annexe, extension, piscine…), hauteur maximale, implantation par rapport aux voies et emprises publiques (recul depuis la rue), implantation par rapport aux limites séparatives (en limite ou retrait minimum, souvent H/2 avec un minimum en mètres), emprise au sol maximale, aspect extérieur (toiture, pentes, matériaux, couleurs, clôtures), espaces verts / pleine terre.
+Pour chaque règle : cite l'article et la valeur exacte du règlement, donne la valeur du projet, et un verdict :
+- "conforme" : le projet respecte clairement la règle ;
+- "a_verifier" : il manque une donnée du projet, ou la règle dépend d'une interprétation ;
+- "non_conforme" : le projet dépasse clairement la règle.
+Les annexes, extensions et piscines ont souvent des règles particulières : applique-les si elles existent. N'invente aucune règle : si le texte ne dit rien sur un point, ne le liste pas. Une distance absente du projet = "a_verifier".
+Contexte : ${JSON.stringify(body.contexte ?? {}).slice(0, 600)}
+Projet : ${JSON.stringify(body.projet ?? {}).slice(0, 3000)}
+Réponds uniquement en JSON, sans texte autour :
+{"regles":[{"theme":"hauteur|recul_voie|limites|emprise|aspect|destination|espaces_verts|autre","article":"…","regle":"…","projet":"…","verdict":"conforme|a_verifier|non_conforme","explication":"une phrase"}],"synthese":"2 phrases maximum","pieces_en_plus":["pièce demandée par ce règlement ou cette zone, s'il y en a"]}
+
+RÈGLEMENT (extrait) :
+${String(body.texte ?? '').slice(0, 60000)}`;
+        const r = await fetch(`${OR}/chat/completions`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${env('OPENROUTER_API_KEY')}`, 'Content-Type': 'application/json', 'X-Title': 'Urbatik' },
+            body: JSON.stringify({ model: env('PLU_MODEL', env('VISION_MODEL', 'anthropic/claude-sonnet-4.5')), max_tokens: 8000,
+                messages: [{ role: 'user', content: consigne }] }),
+        });
+        const rep = await r.json().catch(() => ({}));
+        if (!r.ok) return json({ error: 'openrouter', detail: rep?.error?.message ?? r.status }, 502);
+        try { return json(lireJson(rep)); }
+        catch (e) { return json({ regles: [], synthese: `analyse illisible (${(e as Error).message})` }); }
+    }
+
     if (body.action === 'depot_url') {
         const path = `${o.id}/dossier-genere-${g.id.slice(0, 8)}.pdf`;
         const { data, error } = await db.storage.from(BUCKET).createSignedUploadUrl(path, { upsert: true });
@@ -165,7 +196,8 @@ Réponds uniquement en JSON : {"ok": true|false, "ecarts": ["…"], "proportions
     if (body.action === 'depot') {
         const path = `${o.id}/dossier-genere-${g.id.slice(0, 8)}.pdf`;
         const a_verifier = Array.isArray(body.a_verifier) ? body.a_verifier.map(String).slice(0, 40) : [];
-        await maj({ status: 'a_relire', pdf_path: path, a_verifier });
+        const plu = body.plu && typeof body.plu === 'object' ? body.plu : null;
+        await maj({ status: 'a_relire', pdf_path: path, a_verifier, plu });
         if (o.status === 'payee') await db.from('orders').update({ status: 'en_preparation', updated_at: new Date().toISOString() }).eq('id', o.id);
         const lien = `${SITE_URL}/admin/dossiers#${o.id}`;
         await sendEmail(env('ADMIN_EMAIL'), `Dossier généré, à relire – ${o.entreprise} – ${o.ville}`,

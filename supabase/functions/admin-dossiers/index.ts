@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
             : { data: [] };
         const { client_token: _t, ...order } = o;
         const { data: gens } = await db.from('dossier_generations')
-            .select('id, status, a_verifier, pdf_path, insertion_path, erreur, lance_par, created_at, updated_at')
+            .select('id, status, a_verifier, plu, pdf_path, insertion_path, erreur, lance_par, created_at, updated_at')
             .eq('order_id', o.id).order('created_at', { ascending: false }).limit(5);
         const generations = await Promise.all((gens ?? []).map(async g => ({
             ...g,

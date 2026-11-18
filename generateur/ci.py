@@ -10,7 +10,7 @@ Le dépôt est public, donc les journaux d'Actions aussi : ce script n'écrit RI
 import io, json, os, sys, tempfile, time, traceback, urllib.error, urllib.request
 
 sys.path.insert(0, os.path.dirname(__file__))
-import dossier as D, depuis_commande as C, photomontage as P, vision as V
+import dossier as D, depuis_commande as C, photomontage as P, plu as U, vision as V
 
 API = os.environ.get("DOSSIER_IA_URL", "https://snxhsboboatjywgwdeds.supabase.co/functions/v1/dossier-ia")
 GID, TOK = os.environ["GENERATION_ID"], os.environ["GENERATION_TOKEN"]
@@ -56,6 +56,11 @@ def main():
     d = C.construire(cmd, photos, lire_photos=True)
     a_verifier += d.get("_a_verifier", [])
 
+    # Urbanisme : zone du PLU, servitudes (ABF…), puis le règlement de la zone comparé au projet par l'IA.
+    # Les points bloquants passent en tête de la liste du relecteur.
+    resultat_plu, lignes_plu = U.verifier(cmd, d, appel)
+    a_verifier = lignes_plu + a_verifier
+
     # DP7 / DP8 : photo proche = vue d'ensemble, photo lointaine = vue depuis la rue.
     for sorte, nom in (("photo_ensemble", "photo_pres.png"), ("photo_rue", "photo_loin.png")):
         src = next((os.path.join(photos, x) for x in os.listdir(photos) if x.startswith(sorte)), None)
@@ -87,7 +92,7 @@ def main():
     up = appel("depot_url")
     req = urllib.request.Request(up["url"], data=open(pdf, "rb").read(), method="PUT", headers={"Content-Type": "application/pdf"})
     urllib.request.urlopen(req, timeout=120).read()
-    appel("depot", a_verifier=a_verifier)
+    appel("depot", a_verifier=a_verifier, plu=resultat_plu)
 
 
 if __name__ == "__main__":

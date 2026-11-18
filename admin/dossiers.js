@@ -147,6 +147,39 @@
         if (!generations.length) { const tr = document.createElement('tr'); const td = document.createElement('td'); td.colSpan = 5; td.className = 'muted'; td.textContent = "Aucun dossier généré. Le générateur part tout seul quand le client a rempli la fiche et envoyé ses photos."; tr.appendChild(td); tbody.appendChild(tr); }
     }
 
+    // Vérification d'urbanisme automatique (generateur/plu.py) : zone, servitudes, règles du règlement.
+    const VERDICT = { conforme: ['✅', 'Conforme'], a_verifier: ['🟠', 'À vérifier'], non_conforme: ['⛔', 'Non conforme'] };
+    function renderPlu(box, plu) {
+        if (!plu) return;
+        const wrap = document.createElement('div'); wrap.style.cssText = 'margin:10px 0;padding:10px 12px;border:1px solid var(--line, #e3e1da);border-radius:10px';
+        const h = document.createElement('p'); h.style.cssText = 'margin:0 0 6px;font-weight:700'; h.textContent = 'Urbanisme (vérifié automatiquement)'; wrap.appendChild(h);
+        const f = plu.faits || {};
+        const line = (t, strong) => { const p = document.createElement('p'); p.style.margin = '2px 0'; if (strong) p.style.fontWeight = '600'; p.textContent = t; wrap.appendChild(p); return p; };
+        if (plu.erreur) line(plu.erreur, true);
+        if (f.rnu && !f.document) line('Commune au RNU (pas de PLU) : règlement national.');
+        if (f.zone) line(`Zone ${f.zone.code || '?'} — ${f.zone.nom || f.zone.type || ''}${f.document ? ' · ' + (f.document.type || '') + ' ' + (f.document.titre || '') : ''}`);
+        if (f.reglement_url) { const a = document.createElement('a'); a.href = f.reglement_url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = '📘 Règlement du PLU (PDF)'; a.style.cssText = 'display:block;margin:4px 0;font-weight:600'; wrap.appendChild(a); }
+        (f.servitudes || []).forEach(s => line(`⚠ ${s.nom} : ${s.effet}`, ['ac1', 'ac2', 'ac4'].includes(s.type)));
+        if ((f.prescriptions || []).length) line('Prescriptions : ' + f.prescriptions.slice(0, 6).join(' ; '));
+        const a = plu.analyse;
+        if (a && Array.isArray(a.regles) && a.regles.length) {
+            if (a.synthese) line(a.synthese, true);
+            const t = document.createElement('table'); t.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;margin-top:6px';
+            const ordre = { non_conforme: 0, a_verifier: 1, conforme: 2 };
+            [...a.regles].sort((x, y) => (ordre[x.verdict] ?? 3) - (ordre[y.verdict] ?? 3)).forEach(r => {
+                const tr = document.createElement('tr'); tr.style.borderTop = '1px solid var(--line, #e3e1da)';
+                const [ico, lab] = VERDICT[r.verdict] || ['•', r.verdict || ''];
+                [`${ico} ${lab}`, `${r.theme || ''}${r.article ? ' · ' + r.article : ''}`, r.regle || '', `Projet : ${r.projet || '—'}`].forEach((v, i) => {
+                    const td = document.createElement('td'); td.style.cssText = 'padding:4px 6px;vertical-align:top' + (i === 0 ? ';white-space:nowrap;font-weight:600' : ''); td.textContent = v; tr.appendChild(td);
+                });
+                t.appendChild(tr);
+            });
+            wrap.appendChild(t);
+            if ((a.pieces_en_plus || []).length) line('Pièces en plus demandées : ' + a.pieces_en_plus.join(' ; '));
+        }
+        box.appendChild(wrap);
+    }
+
     function renderGen(d) {
         const box = $('dGenBody'); box.textContent = '';
         const g = (d.generations || [])[0];
@@ -163,6 +196,7 @@
             if (!u) return; const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = t;
             a.style.cssText = 'display:block;margin:4px 0;font-weight:600'; box.appendChild(a);
         });
+        renderPlu(box, g.plu);
         if ((g.a_verifier || []).length) {
             const h = document.createElement('p'); h.style.margin = '10px 0 4px'; h.textContent = 'À vérifier par le relecteur :'; box.appendChild(h);
             const ul = document.createElement('ul'); ul.style.margin = '0'; ul.style.paddingLeft = '18px';
@@ -182,6 +216,8 @@
     });
     $('genValider').addEventListener('click', async () => {
         const g = current.generations[0];
+        const non = ((g.plu && g.plu.analyse && g.plu.analyse.regles) || []).filter(r => r.verdict === 'non_conforme').length;
+        if (non && !confirm(`${non} règle(s) du PLU marquée(s) non conforme(s) par la vérification automatique. Valider quand même ce dossier ?`)) return;
         try { await api('generation_statut', { gid: g.id, status: 'validee' }); flash('Dossier marqué validé.'); route(); } catch (e) { flash('Échec.'); }
     });
 
