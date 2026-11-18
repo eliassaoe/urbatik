@@ -62,3 +62,19 @@ Dépôt public = journaux d'Actions publics : `ci.py` n'écrit rien de la comman
 
 ## Ce qui reste marqué « À compléter par le relecteur » (orange)
 - Ce que l'IA n'a pas pu produire : DP6 sans clé d'image, vue aérienne si l'IGN ne répond pas.
+
+## Vérification d'urbanisme automatique (18 nov. 2026, `plu.py`)
+
+À chaque génération, avant la relecture humaine :
+1. **Géoportail de l'Urbanisme** (API Carto IGN, sans clé) au point de l'adresse : document (PLU, PLUi, carte communale
+   ou RNU), zone (code, libellé, type U/AU/A/N), lien vers le règlement PDF, servitudes (AC1 abords de monument
+   historique, AC2 site, AC4 site patrimonial remarquable → ABF ; PM1 PPR…), prescriptions (hauteur, coefficient
+   nature, EBC, patrimoine…).
+2. **Règlement** : le PDF est téléchargé, le chapitre de la zone + les dispositions communes sont extraits
+   (`extrait_reglement`), puis l'action `plu` de `dossier-ia` (modèle `PLU_MODEL`, sinon `VISION_MODEL`) compare
+   le projet règle par règle : conforme / à vérifier / non conforme, article cité.
+3. Résultat dans `dossier_generations.plu` et en tête de la liste « à vérifier ». Dans l'admin, bloc « Urbanisme » ;
+   valider un dossier avec un « non conforme » demande une confirmation.
+
+Premier essai (commande test, PLUi Le Mans Métropole, zone U mixte 1) : 6 règles lues ; la hauteur de 3,20 m du préau
+dépasse la règle des annexes (3 m à l'égout) → signalée « à vérifier » avec l'article et la page.
