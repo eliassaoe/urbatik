@@ -42,7 +42,7 @@ export async function loadSettings(): Promise<void> {
     SITE_URL = env('SITE_URL', 'https://urbatik.com').replace(/\/$/, '');
     CALL_URL = env('CALL_URL', 'https://wa.me/33626344475?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20un%20dossier%20de%20mairie.');
 }
-export const DELAI = "7 jours après réception de toutes les informations";
+export const DELAI = "48 h (jours ouvrés) après réception de toutes les informations";
 export const BUCKET = 'dossiers';
 export const MAX_FILE_BYTES = 15 * 1024 * 1024;
 export const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
