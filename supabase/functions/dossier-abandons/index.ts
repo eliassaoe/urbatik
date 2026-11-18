@@ -1,8 +1,13 @@
 // dossier-abandons : deux suites de relances, sans payer.
 //  A. « abandon » : email laissé au dernier écran du formulaire (offer_started_at) → 3 emails à +1 h, +24 h, +7 j.
 //  B. « nurture » : visite identifiée par le lien ?e= (visited_at) sans aller jusqu'au dernier écran
-//     → 6 emails à +3 h, +2 j, +7 j, +21 j, +45 j, +75 j.
-// Les deux s'arrêtent dès qu'une commande est payée ; B s'arrête dès que A commence.
+//     → 10 emails sur 5 mois (+3 h, +2 j, +5 j, +10 j, +21 j, +35 j, +55 j, +80 j, +110 j, +150 j).
+//     Prioritaire : chaque visite d'un prospect connu prévient le gérant (dossier-visit).
+//  C. « réponse » : prospect qui a répondu à la prospection Explee (projet creha 61157, lead « Hot »)
+//     sans être venu sur le site → 8 emails sur 5 mois (+10 j, +17 j, +25 j, +40 j, +60 j, +85 j, +115 j, +150 j).
+//     Synchronisé ici à chaque passage depuis la page /relance (données Explee déjà publiées, voir syncExplee).
+// Tout s'arrête dès qu'une commande est payée ; B s'arrête dès que A commence ; C s'arrête dès qu'il visite (B prend le relais).
+// Décision du gérant, 18 nov. 2026 : relancer 6 à 10 fois sur plusieurs mois, le chantier arrive quand il arrive.
 // Appelée toutes les heures par pg_cron (job « dossier-relances-abandons ») avec x-cron-token = CRON_TOKEN.
 // Autonome (pas de _shared) pour se déployer en un seul fichier. Déployer avec --no-verify-jwt.
 
@@ -15,7 +20,11 @@ const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&a
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
 
 const STEPS_H = [1, 24, 24 * 7];
-const NURTURE_H = [3, 48, 24 * 7, 24 * 21, 24 * 45, 24 * 75];
+const D = 24;
+const NURTURE_H = [3, 2 * D, 5 * D, 10 * D, 21 * D, 35 * D, 55 * D, 80 * D, 110 * D, 150 * D];
+const REPLY_H = [10 * D, 17 * D, 25 * D, 40 * D, 60 * D, 85 * D, 115 * D, 150 * D];
+const EXPLEE_PROJECT = 61157;
+const RELANCE_DATA = 'https://raw.githubusercontent.com/eliassaoe/findlinkai/main/relance.html';
 
 function shell(inner: string): string {
     return `<!doctype html><html lang="fr"><body style="margin:0;background:#f7f6f2;font:16px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;color:#1d1f1e">
@@ -65,12 +74,24 @@ function nurture(step: number, site: string, call: string): { subject: string; h
         ['Une question sur votre prochain chantier ?',
          `Si vous avez un projet en vue (pergola, véranda, abri, piscine, clôture…), écrivez-nous sur WhatsApp : on vous dit s'il faut une déclaration ou un permis, et ce que la mairie va demander.`,
          'Écrire sur WhatsApp'],
+        ['À quoi ressemble un dossier prêt à déposer',
+         `Plan de situation, plan de masse, façades avant et après, photomontage, notice et Cerfa rempli : c'est ce que vous recevez, prêt à déposer en mairie ou en ligne. Des exemples sont sur notre site.`,
+         'Voir les tarifs'],
         ['Pas de chantier en ce moment ?',
          `Pas de souci. Gardez cet email : le jour où un client signe, votre dossier de mairie se lance en 2 minutes. Beaucoup d'artisans l'ajoutent directement à leurs devis : « démarches mairie incluses, dossier sous 7 jours ».`,
          'Lancer un dossier'],
         ['Un chantier qui démarre bientôt ?',
-         `Avant de poser, il faut l'accord de la mairie. Plus le dossier part tôt, plus vite vous pouvez commencer. On s'en occupe en 7 jours.`,
+         `Avant de poser, il faut l'accord de la mairie, et l'instruction prend un mois pour une déclaration préalable. Plus le dossier part tôt, plus vite vous pouvez commencer. On le prépare en 7 jours.`,
          'Lancer un dossier'],
+        ['Le dossier de mairie, c\'est souvent ce qui retarde le chantier',
+         `Un dossier incomplet, c'est un mois de plus avant de poser. On vérifie le PLU de la commune avant de préparer le dossier, pour qu'il parte complet du premier coup.`,
+         'Lancer un dossier'],
+        ['Vos chantiers du printemps se préparent maintenant',
+         `Les clients signent en hiver pour poser au printemps. Comme la mairie prend un mois pour répondre, c'est le bon moment pour lancer les dossiers : 2 minutes en ligne, on s'occupe du reste.`,
+         'Lancer un dossier'],
+        ['Une déclaration ou un permis ?',
+         `Pergola, véranda, abri, piscine, clôture : selon la surface et la commune, c'est une déclaration préalable (249 € HT) ou un permis (790 € HT). Si vous avez un doute sur un projet, écrivez-nous, on vous répond.`,
+         'Écrire sur WhatsApp'],
         ['On reste là quand un dossier se présente',
          `C'est notre dernier message. Le jour où une déclaration préalable ou un permis bloque un de vos chantiers, Urbatik le prépare pour vous en 7 jours, remboursé si la mairie refuse.`,
          'Lancer un dossier'],
@@ -84,6 +105,87 @@ function nurture(step: number, site: string, call: string): { subject: string; h
         html: shell(`<p>Bonjour,</p><p>${esc(body)}</p>${btn(href, label)}${extra}`),
         text: `Bonjour,\n\n${body}\n\n${label} : ${href}\nUne question ? WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
     };
+}
+
+// C. Prospects qui ont répondu à la prospection (creha) sans venir sur le site.
+function replyNurture(step: number, prenom: string, site: string, call: string, email: string): { subject: string; html: string; text: string } {
+    const link = (p: string) => `${site}${p}${p.includes('?') ? '&' : '?'}utm_source=relance&utm_medium=email&utm_campaign=creha_reponse&utm_content=c${step + 1}&e=${encodeURIComponent(email)}`;
+    const order = link('/commande'), home = link('/'), ex = link('/exemples');
+    const hello = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
+    const T: [string, string, string, string][] = [
+        ['Suite à votre réponse : vos dossiers de mairie',
+         `Merci de nous avoir répondu il y a quelques jours. Pour rappel, on prépare les dossiers de mairie de vos chantiers (déclaration préalable, permis) : vous décrivez le chantier en 2 minutes en ligne, on s'occupe de tout le dossier, vous le recevez en 7 jours.`,
+         'Voir comment ça marche', home],
+        ['Ce que vous recevez, concrètement',
+         `Un dossier complet, prêt à déposer : Cerfa rempli, plan de situation, plan de masse, façades, photomontage et notice. Vous pouvez voir des exemples sur notre site.`,
+         'Voir des exemples', ex],
+        ['Le prix, sans surprise',
+         `249 € HT la déclaration préalable, 790 € HT le permis de construire, prix fixe annoncé avant de payer. Si la mairie refuse le dossier, on vous rembourse.`,
+         'Lancer un dossier', order],
+        ['Un chantier en vue ?',
+         `Le jour où un client signe une pergola, une véranda, un abri ou une piscine, gardez ce lien : la demande se fait en 2 minutes, et vos équipes restent sur les chantiers pendant qu'on s'occupe de la mairie.`,
+         'Lancer un dossier', order],
+        ['Une question sur un projet ?',
+         `Déclaration ou permis, règles du PLU, délais de la mairie : si vous avez un doute sur un chantier, écrivez-nous sur WhatsApp, on vous répond.`,
+         'Écrire sur WhatsApp', call],
+        ['Vos chantiers du printemps se préparent maintenant',
+         `Les clients signent en hiver pour poser au printemps, et la mairie prend un mois pour répondre. C'est le bon moment pour lancer les dossiers : 2 minutes en ligne, on s'occupe du reste.`,
+         'Lancer un dossier', order],
+        ['Ajoutez la mairie à vos devis',
+         `Beaucoup d'artisans l'écrivent directement dans leurs devis : « démarches mairie incluses, dossier sous 7 jours ». Le client signe plus facilement, et c'est nous qui faisons le dossier.`,
+         'Lancer un dossier', order],
+        ['On reste là quand un dossier se présente',
+         `C'est notre dernier message. Le jour où une déclaration préalable ou un permis bloque un de vos chantiers, on le prépare en 7 jours, remboursé si la mairie refuse.`,
+         'Lancer un dossier', order],
+    ];
+    const [subject, body, label, href] = T[step];
+    const extra = href === call ? `<p>Ou lancez directement votre dossier : <a href="${esc(order)}">2 minutes en ligne</a>.</p>`
+        : `<p>Une question ? <a href="${esc(call)}">Écrivez-nous sur WhatsApp</a>.</p>`;
+    return {
+        subject,
+        html: shell(`<p>${esc(hello)}</p><p>${esc(body)}</p>${btn(href, label)}${extra}`)
+            .replace('suite à votre visite sur urbatik.com', 'suite à notre échange par email sur vos dossiers de mairie'),
+        text: `${hello}\n\n${body}\n\n${label} : ${href}\nUne question ? WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
+    };
+}
+
+// Les prospects « Hot » du projet creha, lus dans la page /relance (même données Explee, déjà calculées
+// toutes les 2 h par le dépôt findlinkai) : pas de clé Explee à stocker ici.
+async function syncExplee(): Promise<number> {
+    let html = '';
+    try { const r = await fetch(RELANCE_DATA); if (!r.ok) return 0; html = await r.text(); } catch { return 0; }
+    const i = html.indexOf('const PAGE = ');
+    if (i < 0) return 0;
+    const j = html.indexOf(';\n', i); // une vraie fin de ligne ne peut pas être dans du JSON
+    let page: { blob?: { plain?: { leads?: Record<string, unknown>[] } } };
+    try { page = JSON.parse(html.slice(i + 13, j < 0 ? undefined : j)); } catch { return 0; }
+    const leads = page?.blob?.plain?.leads ?? [];
+    let n = 0;
+    for (const l of leads) {
+        if (Number(l.project_id) !== EXPLEE_PROJECT) continue;
+        const email = String(l.email ?? '').trim().toLowerCase();
+        if (!/^[^\s@*]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
+        if (l.bucket === 'lost' || l.status === 'lost') continue;
+        if (/ne plus (me )?contacter|d[ée]sinscri|\bstop\b|pas int[ée]ress|retirez|unsubscribe/i.test(String(l.last_reply ?? ''))) continue;
+        const hot = String(l.hot_since || '').slice(0, 10) || new Date().toISOString().slice(0, 10);
+        const phones = (l.phones as { pretty?: string }[] | undefined) ?? [];
+        const { data: c } = await db.from('dossier_clients').select('email, replied_at, nom, entreprise, tel, metier').eq('email', email).maybeSingle();
+        const fields = {
+            // prénom fiable seulement si Explee en a trouvé un (sinon « Bonjour, » plutôt que « Bonjour Yayaac, »)
+            nom: (c?.nom || (/^[\p{L}' -]{2,30}$/u.test(String(l.first_name ?? '')) ? String(l.name ?? '') : '')).slice(0, 120) || null,
+            entreprise: (c?.entreprise || String(l.company ?? '')).slice(0, 160) || null,
+            tel: (c?.tel || phones.map(p => p.pretty).filter(Boolean).join(' / ')).slice(0, 80) || null,
+            metier: (c?.metier || String(l.campaign ?? '')).slice(0, 120) || null,
+        };
+        if (!c) {
+            await db.from('dossier_clients').insert({ email, ...fields, replied_at: `${hot}T09:00:00Z`, source: 'explee_reponse', updated_at: new Date().toISOString() });
+            n++;
+        } else if (!c.replied_at) {
+            await db.from('dossier_clients').update({ ...fields, replied_at: `${hot}T09:00:00Z`, updated_at: new Date().toISOString() }).eq('email', email);
+            n++;
+        }
+    }
+    return n;
 }
 
 Deno.serve(async (req) => {
@@ -134,7 +236,7 @@ Deno.serve(async (req) => {
         .select('email, visited_at, nurture_sent')
         .not('visited_at', 'is', null).is('offer_started_at', null).is('unsubscribed_at', null)
         .lt('nurture_sent', NURTURE_H.length)
-        .gte('visited_at', new Date(Date.now() - 120 * 86_400_000).toISOString());
+        .gte('visited_at', new Date(Date.now() - 200 * 86_400_000).toISOString());
     if (vErr) console.error(vErr);
     let nurtured = 0;
     for (const v of visitors ?? []) {
@@ -147,5 +249,26 @@ Deno.serve(async (req) => {
             nurtured++;
         }
     }
-    return json({ ok: true, sent, nurtured });
+
+    // C. Prospects qui ont répondu (creha), pas encore venus sur le site.
+    const synced = await syncExplee();
+    const { data: repliers, error: rErr } = await db.from('dossier_clients')
+        .select('email, nom, replied_at, reply_nurture_sent')
+        .not('replied_at', 'is', null).is('visited_at', null).is('offer_started_at', null).is('unsubscribed_at', null)
+        .lt('reply_nurture_sent', REPLY_H.length)
+        .gte('replied_at', new Date(Date.now() - 200 * 86_400_000).toISOString());
+    if (rErr) console.error(rErr);
+    let replied = 0;
+    for (const r of repliers ?? []) {
+        if (/@linkfinderai\.com$/i.test(r.email)) continue;
+        const due = new Date(r.replied_at).getTime() + REPLY_H[r.reply_nurture_sent] * 3_600_000;
+        if (Date.now() < due) continue;
+        if (await paid(r.email)) { await db.from('dossier_clients').update({ reply_nurture_sent: REPLY_H.length }).eq('email', r.email); continue; }
+        const prenom = String(r.nom ?? '').trim().split(/\s+/)[0] ?? '';
+        if (await send(r.email, replyNurture(r.reply_nurture_sent, prenom, site, call, r.email))) {
+            await db.from('dossier_clients').update({ reply_nurture_sent: r.reply_nurture_sent + 1, last_reply_nurture_at: new Date().toISOString() }).eq('email', r.email);
+            replied++;
+        }
+    }
+    return json({ ok: true, sent, nurtured, synced, replied });
 });

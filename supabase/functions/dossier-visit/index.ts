@@ -1,5 +1,7 @@
 // dossier-visit : enregistre la visite d'un prospect arrivé par un lien contenant son email (?e=…),
 // pour pouvoir le relancer ensuite (fonction dossier-abandons). Public (appelé par le site), sans JWT.
+// Prospect prioritaire (18 nov. 2026, décision du gérant) : s'il nous a déjà répondu (replied_at) ou s'il revient
+// (2e visite et plus), le gérant reçoit un email tout de suite pour l'appeler. Au plus un par 12 h et par prospect.
 // Source : eliassaoe/urbatik, supabase/functions/dossier-visit/index.ts
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -31,5 +33,35 @@ Deno.serve(async (req) => {
             ...(Object.keys(utm).length ? { utm } : {}),
         });
     }
+    await alertOwner(email, String(body.page ?? '').slice(0, 80));
     return json({ ok: true });
 });
+
+async function alertOwner(email: string, page: string) {
+    try {
+        const { data: c } = await db.from('dossier_clients')
+            .select('email, nom, entreprise, tel, metier, visits, replied_at, priority_alert_at, offer_started_at').eq('email', email).maybeSingle();
+        if (!c || /@linkfinderai\.com$/i.test(email)) return;
+        const hot = !!c.replied_at || (c.visits ?? 0) >= 2;
+        if (!hot) return;
+        if (c.priority_alert_at && Date.now() - new Date(c.priority_alert_at).getTime() < 12 * 3_600_000) return;
+        const { data: rows } = await db.from('dossier_settings').select('key, value').in('key', ['N8N_EMAIL_WEBHOOK', 'ADMIN_EMAIL']);
+        const S = Object.fromEntries((rows ?? []).map((r: { key: string; value: string }) => [r.key, r.value]));
+        const hook = Deno.env.get('N8N_EMAIL_WEBHOOK') || S.N8N_EMAIL_WEBHOOK, to = Deno.env.get('ADMIN_EMAIL') || S.ADMIN_EMAIL;
+        if (!hook || !to) return;
+        const why = c.replied_at ? 'a répondu à la prospection et vient sur le site' : `revient sur le site (${c.visits}e visite)`;
+        const lines = [
+            `${c.nom || email} ${why}.`, '',
+            `Entreprise : ${c.entreprise || '—'}`, `Métier / campagne : ${c.metier || '—'}`,
+            `Téléphone : ${c.tel || 'inconnu (voir le fil Explee)'}`, `Email : ${email}`,
+            `Page : ${page || '/'}`, `Visites : ${c.visits ?? 1}`, '',
+            `À appeler maintenant, pendant qu'il regarde.`,
+        ];
+        const esc = (x: string) => x.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]!));
+        await fetch(hook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+            to, subject: `🔥 À appeler : ${c.nom || email}${c.entreprise ? ' (' + c.entreprise + ')' : ''} est sur Urbatik`,
+            html: lines.map(l => `<p style="margin:0 0 6px">${esc(l)}</p>`).join(''), text: lines.join('\n'), from_name: 'Urbatik',
+        }) });
+        await db.from('dossier_clients').update({ priority_alert_at: new Date().toISOString() }).eq('email', email);
+    } catch (e) { console.error(e); }
+}

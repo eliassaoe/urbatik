@@ -29,6 +29,15 @@
     }
     var known = ""; try { known = localStorage.getItem(KEY) || ""; } catch (x) {}
     if (ok(known)) {
+      // Retour d'un prospect déjà connu (sans ?e= dans le lien) : on compte la visite, une fois par session,
+      // pour que dossier-visit prévienne le gérant (prospect prioritaire, 18 nov. 2026).
+      try {
+        if (!ok(e) && !sessionStorage.getItem("urbatik_visit_sent")) {
+          sessionStorage.setItem("urbatik_visit_sent", "1");
+          fetch(VISIT, { method: "POST", headers: { "Content-Type": "application/json", apikey: APIKEY },
+            body: JSON.stringify({ email: known, utm: {}, page: location.pathname, source: "retour" }), keepalive: true }).catch(function () {});
+        }
+      } catch (x) {}
       var id = function () { try { if (window.posthog && posthog.identify) posthog.identify(known, { email: known }); } catch (x) {} };
       if (document.readyState === "complete") id(); else addEventListener("load", id);
     }
