@@ -344,6 +344,24 @@ const DRAFT = "dx_draft_v1";
   } catch (e) {}
   const pre = params.get("type");
   if (pre && PRICES[pre]) form.querySelector(`input[name=type_dossier][value=${pre}]`).checked = true;
+  // Reprise d'une demande déjà remplie ailleurs (ex. sur son téléphone) : ?d=<JSON en base64url> envoyé au prospect
+  // par le gérant. Les champs remplissent le formulaire, puis on ouvre la première question incomplète.
+  let reprise = false;
+  try {
+    const raw = params.get("d");
+    if (raw) {
+      const d = JSON.parse(decodeURIComponent(escape(atob(raw.replace(/-/g, "+").replace(/_/g, "/")))));
+      for (const [k, v] of Object.entries(d)) {
+        const el = form.elements[k];
+        if (!el || typeof v !== "string") continue;
+        if (el instanceof RadioNodeList) { const r = [...el].find(x => x.value === v); if (r) r.checked = true; }
+        else if (el.type !== "file") el.value = v;
+      }
+      reprise = true;
+      try { save(); } catch (x) {}
+      track("dossier_express_reprise", {});
+    }
+  } catch (e) {}
   const save = () => {
     try {
       const d = {};
@@ -662,7 +680,10 @@ const DRAFT = "dx_draft_v1";
     }
   });
 
-  show(pre && PRICES[pre] ? 1 : 0, "init");
+  if (reprise) {
+    const k = steps.findIndex((st, n) => n < steps.length - 1 && [...st.querySelectorAll("[required]")].some(el => !el.checkValidity()));
+    show(k < 0 ? steps.length - 1 : k, "init");
+  } else show(pre && PRICES[pre] ? 1 : 0, "init");
 })();
 </script>
 </body>
