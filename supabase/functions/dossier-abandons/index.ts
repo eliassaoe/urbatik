@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
         const hello = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
         const m = n === 0
             ? { subject: 'Votre chantier approche : on lance le dossier de mairie ?',
-                body: `Vous nous aviez dit avoir besoin d'un dossier de mairie vers le ${date}${quoi}. On y est presque. Remplissez la demande en 2 minutes : le dossier est prêt en 72 h, et on vérifie le PLU avant.` }
+                body: `Vous nous aviez dit avoir besoin d'un dossier de mairie vers le ${date}${quoi}. On y est presque. Remplissez la demande en 2 minutes : le dossier est prêt en 72 h.` }
             : { subject: "C'est le moment de lancer votre dossier de mairie",
                 body: `C'est la date que vous nous aviez donnée pour votre dossier de mairie${quoi}. Plus il part tôt, plus vite la mairie répond : la demande prend 2 minutes, le dossier est prêt en 72 h.` };
         const ok = await send(c.email, {
