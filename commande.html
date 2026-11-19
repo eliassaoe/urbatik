@@ -202,6 +202,15 @@ textarea{resize:vertical;min-height:110px}
     <p class="help">La surface de plancher, proche de la surface habitable. Elle décide si un architecte est obligatoire (au-delà de 150 m² après travaux). Laissez vide si vous ne savez pas.</p>
     <label class="f">Surface de la maison (m²)<input name="surface_existante_m2" inputmode="decimal" placeholder="110"></label>
     <label class="f" id="abri">Hauteur de l'abri de piscine, s'il y en a un (m)<input name="piscine_abri_hauteur_m" inputmode="decimal" placeholder="Laissez vide s'il n'y en a pas"></label>
+    <!-- Étude thermique RE2020 (19 nov. 2026) : obligatoire au dépôt pour une extension ou véranda chauffée de 50 m² ou plus.
+         Non comprise dans le prix : on l'organise sur devis avec un bureau d'études thermiques. -->
+    <div id="thermique" class="f" hidden style="border:1px solid var(--line,#e3e1da);border-radius:12px;padding:12px 14px;margin-top:6px">
+      <strong>Sera-t-elle chauffée ?</strong>
+      <p class="help" style="margin:4px 0 8px">Au-delà de 50 m² chauffés, la mairie demande une attestation thermique RE2020, signée par un bureau d'études. Elle n'est pas comprise dans le prix : on vous l'organise avec notre bureau d'études partenaire, sur devis.</p>
+      <label style="display:block;margin:4px 0"><input type="radio" name="chauffee" value="oui"> Oui, chauffée : je veux l'étude thermique avec mon dossier</label>
+      <label style="display:block;margin:4px 0"><input type="radio" name="chauffee" value="oui_sans"> Oui, chauffée : j'ai déjà mon étude thermique</label>
+      <label style="display:block;margin:4px 0"><input type="radio" name="chauffee" value="non"> Non, pas chauffée</label>
+    </div>
   </section>
 
   <section class="q" data-key="photo_facade" data-optional data-later>
@@ -362,7 +371,10 @@ const DRAFT = "dx_draft_v1";
     stepErr.textContent = "";
     bar.style.width = Math.round(((i + (isFinal ? 1 : 0)) / (steps.length - 1)) * 100) + "%";
     count.textContent = isFinal ? "Dernière étape" : `${i + 1} / ${steps.length - 1}`;
-    if (s.dataset.key === "existant") document.getElementById("abri").hidden = form.type_ouvrage.value !== "piscine";
+    if (s.dataset.key === "existant") {
+      document.getElementById("abri").hidden = form.type_ouvrage.value !== "piscine";
+      document.getElementById("thermique").hidden = !besoinThermique();
+    }
     if (isFinal) { renderFinal(); pluStart(); pluRender(); }
     const first = s.querySelector("input:not([type=radio]):not([type=file]), textarea");
     if (first && matchMedia("(pointer:fine)").matches) setTimeout(() => first.focus(), 60);
@@ -422,6 +434,11 @@ const DRAFT = "dx_draft_v1";
 
   // Vérification du PLU AVANT le paiement (fonction plu-check, 18 nov. 2026) : lancée dès que le projet est décrit,
   // le résultat attend sur le dernier écran. Projet « non viable » → pas de paiement, on explique quoi changer.
+  // Attestation thermique RE2020 : extension ou véranda de 50 m² ou plus (si chauffée).
+  function besoinThermique() {
+    const s = parseFloat(String(form.surface_m2.value || "").replace(",", "."));
+    return ["extension", "veranda"].includes(form.type_ouvrage.value) && s >= 50;
+  }
   const PLU_FIELDS = ["type_dossier", "type_ouvrage", "adresse_chantier", "code_postal", "ville", "surface_m2", "hauteur_m", "dimensions",
     "distance_limites", "terrain_modifie", "materiaux", "couleurs", "surface_existante_m2", "piscine_abri_hauteur_m"];
   const plu = { id: null, key: "", res: null, started: 0, timer: null };
@@ -598,6 +615,13 @@ const DRAFT = "dx_draft_v1";
     try {
       const fields = {};
       for (const [k, v] of new FormData(form).entries()) if (!FILE_FIELDS.includes(k)) fields[k] = v;
+      // Étude thermique : rangée dans le message de la commande (affiché dans l'admin), sans changer la base.
+      if (besoinThermique() && fields.chauffee) {
+        const t = { oui: "ÉTUDE THERMIQUE RE2020 DEMANDÉE (extension chauffée de 50 m² ou plus) : envoyer un devis", oui_sans: "Extension chauffée de 50 m² ou plus : le client a déjà son étude thermique RE2020, la lui demander", non: "Extension de 50 m² ou plus non chauffée (pas d'étude thermique)" }[fields.chauffee];
+        fields.description = "[" + t + "]" + (fields.description ? "\n" + fields.description : "");
+        track("dossier_express_thermique", { choix: fields.chauffee, surface: fields.surface_m2 });
+      }
+      delete fields.chauffee;
       progress.textContent = "Préparation des photos…";
       const files = [];
       for (const name of FILE_FIELDS) { const f = form.elements[name].files[0]; if (f) files.push({ kind: name, file: await shrink(f) }); }
