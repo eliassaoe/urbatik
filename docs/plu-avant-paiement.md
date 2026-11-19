@@ -33,3 +33,7 @@ si la pergola est classée annexe, et 3,50 m en limite au-delà de 20 m de la ru
 ## 19 nov. 2026 : le « à vérifier » ne doit pas faire fuir
 Un vérandaliste (Colomiers, 18 m²) a rempli les 17 étapes à minuit, a vu « à vérifier… Faire confirmer ces points par le service urbanisme de Colomiers avant de payer », et est parti sans payer. Le texte de la zone UM7 n'avait pas été extrait (seul le sommaire du PLUi de Toulouse Métropole), d'où une liste de devoirs.
 Correction : dans le formulaire, un « à vérifier » s'affiche « ✅ Rien ne bloque d'après vos chiffres » + les thèmes qu'Urbatik vérifie lui-même, sans la liste `que_faire`. La consigne de l'IA interdit désormais « consultez la mairie avant de payer ». Reste à faire : extraire la bonne partie des règlements découpés par zone (PLUi de grandes métropoles).
+
+## 19 nov. 2026, 10h : retiré du formulaire
+Gérant : « Fais pas de PLU… laisse les gens payer. S'il y a des galères, je rembourse. » La vérification n'est plus lancée depuis `/commande` (le code `pluStart`/`pluRender` reste, inutilisé). Le PLU se vérifie après la commande (générateur + admin). La page gratuite `/verifier-plu` reste en ligne.
+Pour rouvrir l'offre −30 % à un prospect pendant N heures : `update dossier_clients set offer_started_at = now() + interval 'N hours' - interval '10 minutes', abandon_reminders_sent = 3 where email = '…'` (le chrono s'affiche alors en heures).
