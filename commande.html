@@ -472,28 +472,27 @@ const DRAFT = "dx_draft_v1";
     if (pending) {
       box.classList.add("wait");
       const h = el("h3"); h.append(el("span", "", "spin"), document.createTextNode(`On vérifie votre projet avec le PLU de ${ville}…`)); box.append(h);
-      box.append(el("p", "Zone, hauteur, distances aux limites, aspect : on lit le règlement de la commune pour vous dire, avant de payer, si le projet passe. Moins d'une minute."));
-      btn.disabled = true; btn.textContent = "Vérification du PLU en cours…";
+      box.append(el("p", "Vous pouvez commander sans attendre : on vérifie de toute façon le PLU avant de préparer le dossier."));
+      setPrice(form.type_dossier.value || "dp", offerEnd && Date.now() < offerEnd);
       return;
     }
     const z = r.faits && r.faits.zone ? ` (zone ${r.faits.zone.code})` : "";
     const res = r.resultat || {};
     const v = r.verdict;
     if (!plu.tracked || plu.tracked !== r.id) { plu.tracked = r.id; track("dossier_express_plu_result", { verdict: v || "inconnu", zone: r.faits && r.faits.zone ? r.faits.zone.code : null }); }
+    // 19 nov. 2026, gérant : « faut pas que ça nique des ventes ». La vérification PLU ne bloque plus jamais le paiement
+    // et n'affiche plus de liste de points : l'extraction des règlements n'est pas assez fiable (PLUi de Toulouse lu à
+    // moitié, un vérandaliste prêt à payer est parti). Le détail complet reste dans l'admin, c'est NOUS qui vérifions.
     if (v === "non_viable") {
-      box.classList.add("ko");
-      box.append(el("h3", "⛔ En l'état, votre projet ne respecte pas le PLU" + z));
-      if (res.titre) { const t = el("p", res.titre); t.style.fontWeight = "600"; box.append(t); }
-      if (res.explication) box.append(el("p", res.explication));
-      if ((res.que_faire || []).length) { box.append(el("p", "Pour qu'il passe :")); const ul = el("ul"); res.que_faire.forEach(t => ul.append(el("li", t))); box.append(ul); }
-      box.append(el("p", "On préfère vous le dire maintenant plutôt que de vous faire payer un dossier que la mairie refuserait."));
+      box.classList.add("warn");
+      box.append(el("h3", "🟠 Un point du PLU à ajuster" + z));
+      if (res.titre) box.append(el("p", res.titre));
+      box.append(el("small", "On le règle avec vous avant de préparer le dossier : on vous propose l'ajustement qui passe. Si le projet ne peut pas passer, on vous rembourse."));
       const acts = el("div", "", "acts");
-      const mod = el("button", "Modifier mon projet", "b1"); mod.type = "button";
+      const mod = el("button", "Modifier mes dimensions", "b2"); mod.type = "button";
       mod.addEventListener("click", () => { track("dossier_express_plu_modify"); show(steps.findIndex(s => s.dataset.key === "taille")); });
-      const wa = el("a", "En parler sur WhatsApp", "b2"); wa.href = CONFIG.call; wa.target = "_blank"; wa.rel = "noopener";
-      wa.addEventListener("click", () => track("dossier_express_click_whatsapp", { from: "plu_non_viable" }));
-      acts.append(mod, wa); box.append(acts);
-      btn.disabled = true; btn.textContent = "Projet à modifier avant de commander";
+      acts.append(mod); box.append(acts);
+      setPrice(form.type_dossier.value || "dp", offerEnd && Date.now() < offerEnd);
       return;
     }
     setPrice(form.type_dossier.value || "dp", offerEnd && Date.now() < offerEnd);
@@ -507,10 +506,7 @@ const DRAFT = "dx_draft_v1";
       // « avant de payer ») a fait fuir un vérandaliste prêt à commander. Ici, on dit seulement que rien ne bloque
       // et que c'est NOUS qui vérifions le reste. Le détail reste dans l'admin.
       box.append(el("h3", "✅ Rien ne bloque d'après vos chiffres" + z));
-      const themes = { hauteur: "la hauteur", limites: "la distance aux limites", recul_voie: "le recul par rapport à la rue", emprise: "l'emprise au sol", espaces_verts: "les espaces verts", aspect: "l'aspect (matériaux, couleurs)", destination: "le type de construction autorisé", autre: "les servitudes de la commune" };
-      const av = [...new Set((res.regles || []).filter(x => x.verdict === "a_verifier").map(x => themes[x.theme] || null).filter(Boolean))].slice(0, 4);
-      box.append(el("p", "Quelques points dépendent d'informations qu'on vérifie nous-mêmes avant de préparer le dossier" + (av.length ? " : " + av.join(", ") + "." : ".") + " Vous n'avez rien à faire de plus."));
-      box.append(el("small", "Si un point ne passe pas, on vous propose un ajustement, ou on vous rembourse."));
+      box.append(el("small", "On vérifie le détail du PLU nous-mêmes avant de préparer le dossier. Vous n'avez rien à faire de plus. Remboursé si ça ne passe pas."));
     } else {
       box.classList.add("wait");
       box.append(el("p", r.adresse_introuvable ? "Adresse non trouvée : on vérifiera le PLU dès réception de la commande, avant de préparer le dossier."
@@ -552,7 +548,6 @@ const DRAFT = "dx_draft_v1";
     document.getElementById("offerOn").hidden = !on;
     document.getElementById("offerOff").hidden = on;
     const r = plu.res;
-    if (!r || !["pret", "erreur", "indisponible"].includes(r.status) || r.verdict === "non_viable") return; // le bouton reste celui du PLU
     document.getElementById("submit").textContent = `Payer ${on ? OFFER[t] : PRICES[t]} et envoyer`;
   }
   async function startOffer(t, email) {
@@ -609,7 +604,6 @@ const DRAFT = "dx_draft_v1";
   form.addEventListener("submit", async e => {
     e.preventDefault();
     errBox.textContent = "";
-    if (plu.res && plu.res.verdict === "non_viable") { pluRender(); return; }
     // Tout est-il rempli ? Sinon on renvoie à la première question incomplète.
     for (let k = 0; k < steps.length - 1; k++) {
       if ([...steps[k].querySelectorAll("[required]")].some(el => !el.checkValidity())) { show(k); valid(steps[k]); return; }
