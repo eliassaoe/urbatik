@@ -564,7 +564,8 @@ const DRAFT = "dx_draft_v1";
       const draw = () => {
         const left = Math.max(0, offerEnd - Date.now());
         const m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
-        document.getElementById("timer").textContent = `${m}:${String(s).padStart(2, "0")}`;
+        // Offre prolongée à la main (ex. 24 h) : afficher « 23 h 59 » plutôt que « 1439:59 ».
+        document.getElementById("timer").textContent = m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}` : `${m}:${String(s).padStart(2, "0")}`;
         if (!left) { clearInterval(tick); setPrice(form.type_dossier.value || "dp", false); track("dossier_express_offer_expired"); }
       };
       setPrice(t, true); draw(); tick = setInterval(draw, 1000);
