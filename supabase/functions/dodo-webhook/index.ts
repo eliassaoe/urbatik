@@ -98,7 +98,7 @@ function recap(o: Record<string, any>): [string, string][] {
         ['Type de dossier', TYPES[o.type_dossier as TypeDossier].label],
         ['Adresse du chantier', `${o.adresse_chantier}, ${o.code_postal} ${o.ville}`],
         ["Type d'ouvrage", OUVRAGES[o.type_ouvrage] ?? o.type_ouvrage],
-        ['Dimensions', `${o.dimensions} · surface ${o.surface_m2} m² · hauteur ${o.hauteur_m} m`],
+        ...(o.surface_m2 ? [['Dimensions', `${o.dimensions ?? ''} · surface ${o.surface_m2} m² · hauteur ${o.hauteur_m} m`] as [string, string]] : []),
     ];
 }
 

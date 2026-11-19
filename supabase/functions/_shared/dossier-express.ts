@@ -125,6 +125,18 @@ const ACCOLABLE = ['veranda', 'pergola', 'extension', 'carport', 'abri_jardin'];
 const VOLUME = [...ACCOLABLE, 'solaire_sol'];
 const COTES: [string, string][] = [['avant', 'Avant (côté rue)'], ['arriere', 'Arrière'], ['gauche', 'Gauche (vue depuis la rue)'], ['droite', 'Droite (vue depuis la rue)']];
 export const FICHE: { titre: string; aide: string; champs: Champ[] }[] = [
+    // Formulaire court (19 nov. 2026) : ces infos ne sont plus demandées avant le paiement. client-order les recopie
+    // dans les colonnes de la commande (ORDER_FROM_FICHE) pour que le générateur et l'admin les lisent comme avant.
+    {
+        titre: 'Le chantier', aide: 'Les infos qui figureront sur la demande en mairie.', champs: [
+            { k: 'nom_client_final', label: 'Nom et prénom du propriétaire (votre client, il signe la demande)', type: 'texte', requis: true },
+            { k: 'surface_m2', label: 'Surface au sol créée', type: 'num', unite: 'm²', requis: true, min: 0.5, max: 2000 },
+            { k: 'hauteur_m', label: 'Hauteur maximale', type: 'num', unite: 'm', requis: true, min: 0.2, max: 20 },
+            { k: 'materiaux', label: 'Matériaux', type: 'texte', requis: true, aide: 'Ex. : aluminium, toiture vitrée' },
+            { k: 'couleurs', label: 'Couleurs', type: 'texte', requis: true, aide: 'Ex. : gris anthracite RAL 7016' },
+            { k: 'terrain_modifie', label: 'Le terrain sera-t-il terrassé ou remblayé ?', type: 'choix', requis: true, options: [['non', 'Non'], ['oui', 'Oui']] },
+        ],
+    },
     {
         titre: 'Le projet', aide: 'Les mesures extérieures, en mètres. Elles seront dessinées telles quelles sur les plans.', champs: [
             { k: 'largeur_m', label: 'Largeur', type: 'num', unite: 'm', requis: true, min: 0.3, max: 60, ouvrages: VOLUME },
@@ -227,6 +239,28 @@ export function ficheManquants(ouvrage: string, fiche: Record<string, unknown> |
     return FICHE.flatMap(s => s.champs).filter(c => c.requis && champActif(c, ouvrage, f) && (f[c.k] === undefined || f[c.k] === '')).map(c => c.label);
 }
 
+// Champs de la fiche recopiés dans les colonnes de la commande (le générateur lit ces colonnes).
+export function orderFromFiche(f: Record<string, unknown>): Record<string, unknown> {
+    const o: Record<string, unknown> = {};
+    for (const k of ['nom_client_final', 'materiaux', 'couleurs']) if (typeof f[k] === 'string' && f[k]) o[k] = f[k];
+    for (const k of ['surface_m2', 'hauteur_m']) if (typeof f[k] === 'number') o[k] = f[k];
+    if (f.terrain_modifie === 'oui' || f.terrain_modifie === 'non') o.terrain_modifie = f.terrain_modifie === 'oui';
+    if (typeof f.largeur_m === 'number' && typeof f.profondeur_m === 'number') o.dimensions = `${f.largeur_m} m × ${f.profondeur_m} m`;
+    const d = (['dist_avant_m', 'dist_arriere_m', 'dist_gauche_m', 'dist_droite_m'] as const)
+        .filter(k => typeof f[k] === 'number').map(k => `${k.slice(5, -2)} ${f[k]} m`);
+    if (d.length) o.distance_limites = d.join(', ');
+    return o;
+}
+
+// Fiche vue avec les valeurs déjà connues de la commande (commandes passées avec l'ancien formulaire long).
+export function ficheAvecCommande(order: Record<string, unknown>): Record<string, unknown> {
+    const f: Record<string, unknown> = {};
+    for (const k of ['nom_client_final', 'materiaux', 'couleurs']) if (typeof order[k] === 'string' && order[k]) f[k] = order[k];
+    for (const k of ['surface_m2', 'hauteur_m']) if (order[k] !== null && order[k] !== undefined && order[k] !== '') f[k] = Number(order[k]);
+    if (order.surface_m2 !== null && order.surface_m2 !== undefined) f.terrain_modifie = order.terrain_modifie ? 'oui' : 'non';
+    return { ...f, ...((order.fiche_technique ?? {}) as Record<string, unknown>) };
+}
+
 export const FICHE_LIBELLE = 'Fiche technique du projet (mesures, implantation, maison existante)';
 
 // Façades à photographier : les 4, sauf celles déclarées inaccessibles.
@@ -276,7 +310,7 @@ export function missingItems(order: Record<string, unknown>, kinds: string[]): s
     const out: string[] = [];
     for (const k of REQUIRED_PHOTOS) if (!kinds.includes(k)) out.push(FILE_KINDS[k]);
     // Fiche technique et photos des façades : demandées après la commande, nécessaires au générateur.
-    const fiche = (order.fiche_technique ?? null) as Record<string, unknown> | null;
+    const fiche = ficheAvecCommande(order);
     if (ficheManquants(String(order.type_ouvrage ?? ''), fiche).length) out.push(FICHE_LIBELLE);
     for (const k of facadesAttendues(fiche)) if (!kinds.includes(k)) out.push(FILE_KINDS[k]);
     if (order.type_dossier !== 'dp' && (order.surface_existante_m2 === null || order.surface_existante_m2 === undefined)) {

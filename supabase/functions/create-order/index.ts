@@ -15,8 +15,10 @@ import {
     SITE_URL, env, randomToken, safeName, offerStatus, TypeDossier,
 } from '../_shared/dossier-express.ts';
 
-const TEXT = ['entreprise', 'contact_nom', 'contact_email', 'contact_tel', 'nom_client_final', 'adresse_chantier',
-    'code_postal', 'ville', 'dimensions', 'distance_limites', 'materiaux', 'couleurs'];
+// Formulaire court (19 nov. 2026) : seuls le contact et l'adresse sont obligatoires avant le paiement.
+// Le reste (dimensions, matériaux, propriétaire…) arrive après, par la fiche technique de /suivi.
+const TEXT = ['entreprise', 'contact_nom', 'contact_email', 'contact_tel', 'adresse_chantier', 'code_postal', 'ville'];
+const TEXT_OPT = ['nom_client_final', 'dimensions', 'distance_limites', 'materiaux', 'couleurs'];
 
 function str(v: unknown, max = 500): string {
     return typeof v === 'string' ? v.trim().slice(0, max) : '';
@@ -37,25 +39,19 @@ function validate(f: Record<string, unknown>): { row?: Record<string, unknown>; 
         row[k] = str(f[k], k === 'adresse_chantier' ? 300 : 500);
         if (!row[k]) errors.push(k);
     }
+    for (const k of TEXT_OPT) row[k] = str(f[k], 500) || null;
     row.contact_email = String(row.contact_email).toLowerCase();
     if (row.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(row.contact_email))) errors.push('contact_email');
     if (row.code_postal && !/^\d{5}$/.test(String(row.code_postal))) errors.push('code_postal');
     const ouvrage = str(f.type_ouvrage);
     if (!(ouvrage in OUVRAGES)) errors.push('type_ouvrage');
     row.type_ouvrage = ouvrage;
-    for (const k of ['surface_m2', 'hauteur_m']) {
-        const n = num(f[k]);
-        if (n === null || Number.isNaN(n)) errors.push(k);
-        row[k] = n;
-    }
-    for (const k of ['surface_existante_m2', 'piscine_abri_hauteur_m']) {
+    for (const k of ['surface_m2', 'hauteur_m', 'surface_existante_m2', 'piscine_abri_hauteur_m']) {
         const n = num(f[k]);
         if (Number.isNaN(n)) errors.push(k);
         row[k] = Number.isNaN(n) ? null : n;
     }
-    const tm = str(f.terrain_modifie);
-    if (tm !== 'oui' && tm !== 'non') errors.push('terrain_modifie');
-    row.terrain_modifie = tm === 'oui';
+    row.terrain_modifie = str(f.terrain_modifie) === 'oui';
     row.description = str(f.description, 4000) || null;
     return errors.length ? { errors } : { row, errors };
 }

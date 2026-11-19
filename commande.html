@@ -160,103 +160,15 @@ textarea{resize:vertical;min-height:110px}
     </div>
   </section>
 
-  <section class="q" data-key="taille">
-    <h1>Quelle taille fera l'ouvrage ?</h1>
-    <p class="help">Une estimation suffit, on affine avec vous si besoin.</p>
-    <div class="row2">
-      <label class="f">Surface au sol créée (m²)<input name="surface_m2" required inputmode="decimal" placeholder="18"></label>
-      <label class="f">Hauteur maximale (m)<input name="hauteur_m" required inputmode="decimal" placeholder="3,2"></label>
-    </div>
-  </section>
-
-  <section class="q" data-key="dimensions">
-    <h1>Décrivez ses dimensions.</h1>
-    <p class="help">Longueur × largeur, et où il se place par rapport à la maison.</p>
-    <label class="f">Dimensions<textarea name="dimensions" required rows="3" placeholder="6 m × 3 m, accolée à la façade arrière"></textarea></label>
-  </section>
-
-  <section class="q" data-key="limites">
-    <h1>À quelle distance des limites de propriété ?</h1>
-    <p class="help">La distance entre l'ouvrage et la limite la plus proche.</p>
-    <label class="f">Distance (m)<input name="distance_limites" required placeholder="4 m de la limite gauche"></label>
-  </section>
-
-  <section class="q" data-key="terrain">
-    <h1>Le terrain sera-t-il terrassé ou remblayé ?</h1>
-    <p class="help">On en a besoin pour le plan en coupe.</p>
-    <div class="choices">
-      <label class="choice"><input type="radio" name="terrain_modifie" value="oui" required><span class="k">A</span>Oui</label>
-      <label class="choice"><input type="radio" name="terrain_modifie" value="non"><span class="k">B</span>Non</label>
-    </div>
-  </section>
-
-  <section class="q" data-key="materiaux">
-    <h1>Matériaux et couleurs</h1>
-    <p class="help">Ce qui figurera sur la notice envoyée à la mairie.</p>
-    <label class="f">Matériaux<input name="materiaux" required placeholder="Aluminium, toiture vitrée"></label>
-    <label class="f">Couleurs<input name="couleurs" required placeholder="Gris anthracite RAL 7016"></label>
-  </section>
-
-  <section class="q" data-key="existant">
-    <h1>Quelle est la surface habitable actuelle de la maison ?</h1>
-    <p class="help">La surface de plancher, proche de la surface habitable. Elle décide si un architecte est obligatoire (au-delà de 150 m² après travaux). Laissez vide si vous ne savez pas.</p>
-    <label class="f">Surface de la maison (m²)<input name="surface_existante_m2" inputmode="decimal" placeholder="110"></label>
-    <label class="f" id="abri">Hauteur de l'abri de piscine, s'il y en a un (m)<input name="piscine_abri_hauteur_m" inputmode="decimal" placeholder="Laissez vide s'il n'y en a pas"></label>
-    <!-- Étude thermique RE2020 (19 nov. 2026) : obligatoire au dépôt pour une extension ou véranda chauffée de 50 m² ou plus.
-         Non comprise dans le prix : on l'organise sur devis avec un bureau d'études thermiques. -->
-    <div id="thermique" class="f" hidden style="border:1px solid var(--line,#e3e1da);border-radius:12px;padding:12px 14px;margin-top:6px">
-      <strong>Sera-t-elle chauffée ?</strong>
-      <p class="help" style="margin:4px 0 8px">Au-delà de 50 m² chauffés, la mairie demande une attestation thermique RE2020, signée par un bureau d'études. Elle n'est pas comprise dans le prix : on vous l'organise avec notre bureau d'études partenaire, sur devis.</p>
-      <label style="display:block;margin:4px 0"><input type="radio" name="chauffee" value="oui"> Oui, chauffée : je veux l'étude thermique avec mon dossier</label>
-      <label style="display:block;margin:4px 0"><input type="radio" name="chauffee" value="oui_sans"> Oui, chauffée : j'ai déjà mon étude thermique</label>
-      <label style="display:block;margin:4px 0"><input type="radio" name="chauffee" value="non"> Non, pas chauffée</label>
-    </div>
-  </section>
-
-  <section class="q" data-key="photo_facade" data-optional data-later>
-    <p class="kicker">Photo 1 sur 3</p>
-    <h1>Une photo de la façade concernée.</h1>
-    <p class="help">De face, là où seront les travaux. Une photo de téléphone suffit. Pas sous la main ? Envoyez-la plus tard.</p>
-    <label class="drop"><input type="file" name="photo_facade" accept="image/*,application/pdf"><span class="ico">📷</span><strong>Ajouter la photo</strong><span>JPG, PNG, HEIC ou PDF · 15 Mo max</span></label>
-  </section>
-
-  <section class="q" data-key="photo_ensemble" data-optional data-later>
-    <p class="kicker">Photo 2 sur 3</p>
-    <h1>Une vue d'ensemble de la maison.</h1>
-    <p class="help">Prenez du recul pour qu'on voie toute la maison. Pas sous la main ? Envoyez-la plus tard.</p>
-    <label class="drop"><input type="file" name="photo_ensemble" accept="image/*,application/pdf"><span class="ico">🏠</span><strong>Ajouter la photo</strong><span>JPG, PNG, HEIC ou PDF · 15 Mo max</span></label>
-  </section>
-
-  <section class="q" data-key="photo_rue" data-optional data-later>
-    <p class="kicker">Photo 3 sur 3</p>
-    <h1>La maison vue depuis la rue.</h1>
-    <p class="help">Comme la verra un passant. Pas sous la main ? Envoyez-la plus tard.</p>
-    <label class="drop"><input type="file" name="photo_rue" accept="image/*,application/pdf"><span class="ico">🛣️</span><strong>Ajouter la photo</strong><span>JPG, PNG, HEIC ou PDF · 15 Mo max</span></label>
-  </section>
-
-  <section class="q" data-key="plan" data-optional>
-    <h1>Avez-vous un plan, un croquis ou un devis ?</h1>
-    <p class="help">Facultatif, mais ça nous fait gagner du temps.</p>
-    <label class="drop"><input type="file" name="plan_ou_devis" accept="image/*,application/pdf"><span class="ico">📄</span><strong>Ajouter un document</strong><span>JPG, PNG, HEIC ou PDF · 15 Mo max</span></label>
-  </section>
-
-  <section class="q" data-key="client">
-    <p class="kicker">Presque fini</p>
-    <h1>Au nom de qui est le projet ?</h1>
-    <p class="help">Le propriétaire du terrain, votre client. C'est lui qui signe la demande.</p>
-    <label class="f">Nom et prénom du propriétaire<input name="nom_client_final" required placeholder="Marie Martin"></label>
-  </section>
-
-  <section class="q" data-key="entreprise">
-    <h1>Et vous ?</h1>
-    <p class="help">Pour savoir à qui envoyer le dossier.</p>
-    <label class="f">Votre entreprise<input name="entreprise" required autocomplete="organization" placeholder="Vérandas du Rhône"></label>
-    <label class="f">Votre nom<input name="contact_nom" required autocomplete="name" placeholder="Jean Dupont"></label>
-  </section>
-
+  <!-- Formulaire court (19 nov. 2026, gérant : « il faut que le paiement soit super simple »). Avant de payer :
+       type de dossier, ouvrage, adresse, contact. Dimensions, matériaux, propriétaire, photos : après le paiement,
+       sur la page de suivi (fiche technique). Ne rien rajouter ici sans en parler au gérant. -->
   <section class="q" data-key="contact">
+    <p class="kicker">Presque fini</p>
     <h1>Où vous envoyer le dossier ?</h1>
-    <p class="help">Vous recevez le suivi et le dossier final à cette adresse.</p>
+    <p class="help">Les mesures et les photos, vous nous les donnez après, depuis votre lien de suivi.</p>
+    <label class="f">Votre nom<input name="contact_nom" required autocomplete="name" placeholder="Jean Dupont"></label>
+    <label class="f">Votre entreprise<input name="entreprise" required autocomplete="organization" placeholder="Vérandas du Rhône"></label>
     <label class="f">Email<input name="contact_email" type="email" required autocomplete="email" placeholder="jean@entreprise.fr"></label>
     <label class="f">Téléphone<input name="contact_tel" type="tel" required autocomplete="tel" placeholder="06 12 34 56 78"></label>
   </section>
@@ -309,7 +221,7 @@ const CONFIG = {
 const PRICES = { dp: "249 € HT", pc: "390 € HT", a_determiner: "249 € HT" };
 const OFFER = { dp: "174 € HT", pc: "273 € HT", a_determiner: "174 € HT" };
 const TYPE_LABEL = { dp: "Déclaration préalable", pc: "Permis de construire", a_determiner: "À déterminer" };
-const FILE_FIELDS = ["photo_facade", "photo_ensemble", "photo_rue", "plan_ou_devis"];
+const FILE_FIELDS = []; // photos : après le paiement, sur /suivi (formulaire court, 19 nov. 2026)
 const DRAFT = "dx_draft_v1";
 
 (function () {
@@ -351,8 +263,11 @@ const DRAFT = "dx_draft_v1";
     const raw = params.get("d");
     if (raw) {
       const d = JSON.parse(decodeURIComponent(escape(atob(raw.replace(/-/g, "+").replace(/_/g, "/")))));
+      const EXTRA = ["surface_m2", "hauteur_m", "dimensions", "distance_limites", "terrain_modifie", "materiaux", "couleurs", "surface_existante_m2", "piscine_abri_hauteur_m", "nom_client_final"];
       for (const [k, v] of Object.entries(d)) {
-        const el = form.elements[k];
+        let el = form.elements[k];
+        // Infos déjà données (ancien formulaire long) : gardées en champ caché, elles partent avec la commande.
+        if (!el && EXTRA.includes(k) && typeof v === "string") { el = document.createElement("input"); el.type = "hidden"; el.name = k; form.appendChild(el); }
         if (!el || typeof v !== "string") continue;
         if (el instanceof RadioNodeList) { const r = [...el].find(x => x.value === v); if (r) r.checked = true; }
         else if (el.type !== "file") el.value = v;
@@ -390,8 +305,8 @@ const DRAFT = "dx_draft_v1";
     bar.style.width = Math.round(((i + (isFinal ? 1 : 0)) / (steps.length - 1)) * 100) + "%";
     count.textContent = isFinal ? "Dernière étape" : `${i + 1} / ${steps.length - 1}`;
     if (s.dataset.key === "existant") {
-      document.getElementById("abri").hidden = form.type_ouvrage.value !== "piscine";
-      document.getElementById("thermique").hidden = !besoinThermique();
+      const ab = document.getElementById("abri"); if (ab) ab.hidden = form.type_ouvrage.value !== "piscine";
+      const th = document.getElementById("thermique"); if (th) th.hidden = !besoinThermique();
     }
     // 19 nov. 2026, gérant : « fais pas de PLU » dans le formulaire. On laisse les gens payer ; le PLU se vérifie après, dans l'admin.
     if (isFinal) { renderFinal(); setPrice(form.type_dossier.value || "dp", offerEnd && Date.now() < offerEnd); }
@@ -455,6 +370,7 @@ const DRAFT = "dx_draft_v1";
   // le résultat attend sur le dernier écran. Projet « non viable » → pas de paiement, on explique quoi changer.
   // Attestation thermique RE2020 : extension ou véranda de 50 m² ou plus (si chauffée).
   function besoinThermique() {
+    if (!form.elements.surface_m2) return false;
     const s = parseFloat(String(form.surface_m2.value || "").replace(",", "."));
     return ["extension", "veranda"].includes(form.type_ouvrage.value) && s >= 50;
   }
@@ -538,18 +454,17 @@ const DRAFT = "dx_draft_v1";
     const t = form.type_dossier.value || "dp";
     const v = n => (form.elements[n] && form.elements[n].value) || "";
     const ouvrage = form.querySelector("input[name=type_ouvrage]:checked");
-    const photos = ["photo_facade", "photo_ensemble", "photo_rue", "plan_ou_devis"].filter(n => form.elements[n].files[0]).length;
+
     const rows = [
       ["Dossier", TYPE_LABEL[t]],
       ["Travaux", ouvrage ? ouvrage.parentElement.textContent.replace(/^[A-J]/, "").trim() : ""],
       ["Chantier", `${v("adresse_chantier")}, ${v("code_postal")} ${v("ville")}`],
-      ["Photos", photos ? `${photos} fichier${photos > 1 ? "s" : ""}` : "À envoyer plus tard"],
+
       ["Envoi à", v("contact_email")],
     ];
-    const missingPhotos = ["photo_facade", "photo_ensemble", "photo_rue"].filter(n => !form.elements[n].files[0]).length;
     const ln = document.getElementById("laterNote");
-    ln.hidden = !missingPhotos;
-    ln.textContent = `📷 ${missingPhotos} photo${missingPhotos > 1 ? "s" : ""} à envoyer plus tard : après le paiement, vous recevez un lien pour les ajouter. On commence dès qu'on les a.`;
+    ln.hidden = false;
+    ln.textContent = "Après le paiement, un lien de suivi vous permet d'ajouter les mesures et 3 photos du chantier (5 minutes, depuis votre téléphone). On commence dès qu'on les a.";
     const recap = document.getElementById("recap");
     recap.innerHTML = "";
     rows.forEach(([k, val]) => { const d = document.createElement("div"); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("strong"); b.textContent = val; d.append(a, b); recap.append(d); });
@@ -659,7 +574,8 @@ const DRAFT = "dx_draft_v1";
       });
       track("dossier_express_order_submitted", { type: fields.type_dossier, ouvrage: fields.type_ouvrage, offre_10min: !!created.offre_10min, photos: files.length });
 
-      const sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, { auth: { persistSession: false } });
+      // Pas de fichier avant le paiement (formulaire court) : ne pas dépendre du script Supabase pour payer.
+      const sb = created.uploads.length ? window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey, { auth: { persistSession: false } }) : null;
       for (const [k, up] of created.uploads.entries()) {
         progress.textContent = `Envoi des photos… ${k + 1} sur ${created.uploads.length}`;
         const f = files.find(x => x.kind === up.kind).file;
