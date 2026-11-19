@@ -570,6 +570,13 @@ const DRAFT = "dx_draft_v1";
     document.getElementById("submit").textContent = `Payer ${on ? OFFER[t] : PRICES[t]} et envoyer`;
   }
   async function startOffer(t, email) {
+    // Garder la demande côté serveur : les relances contiendront un lien qui la rouvre déjà remplie.
+    try {
+      const fields = {};
+      for (const [k, v] of new FormData(form).entries()) if (!FILE_FIELDS.includes(k) && typeof v === "string" && v) fields[k] = v;
+      fetch(CONFIG.supabaseUrl + "/functions/v1/dossier-visit", { method: "POST", headers: { "Content-Type": "application/json", apikey: CONFIG.supabaseKey },
+        body: JSON.stringify({ action: "draft", email, fields }), keepalive: true }).catch(() => {});
+    } catch (x) {}
     try {
       const r = await call("create-order", {
         action: "offer_start", email, type_dossier: t, nom: form.elements.contact_nom.value,

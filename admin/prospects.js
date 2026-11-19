@@ -180,6 +180,14 @@
             const o = document.createElement('div'); o.className = 'meta'; o.textContent = '🟠 A commencé le formulaire de commande ' + ago(p.offer_started_at); d.appendChild(o);
         }
 
+        // Demande remplie mais pas payée : lien qui la rouvre déjà remplie, à coller dans WhatsApp (19 nov. 2026).
+        if (p.draft && Object.keys(p.draft).length) {
+            const b = btoa(unescape(encodeURIComponent(JSON.stringify(p.draft)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            const link = `https://urbatik.com/commande?utm_source=crm&utm_medium=whatsapp&e=${encodeURIComponent(p.email)}&d=${b}`;
+            const c = document.createElement('button'); c.type = 'button'; c.className = 'act'; c.textContent = '📋 Copier le lien de sa demande remplie';
+            c.addEventListener('click', async () => { try { await navigator.clipboard.writeText(link); c.textContent = '✓ Lien copié'; } catch (e) { prompt('Lien :', link); } });
+            d.appendChild(c);
+        }
         const acts = actions(p); d.appendChild(acts); d.appendChild(acts.wa);
 
         const f = document.createElement('div'); f.className = 'fields';

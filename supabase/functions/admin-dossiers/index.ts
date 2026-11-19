@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
     // Suivi commercial : page /admin/prospects. Tout contact sauf les adresses internes, visites en tête.
     if (body.action === 'crm_list') {
         const { data, error } = await db.from('dossier_clients')
-            .select('email, nom, entreprise, tel, metier, source, utm, visits, visited_at, last_visit_at, first_seen_at, offer_started_at, crm_status, crm_next, crm_relance, crm_notes, crm_said, crm_updated_at, crm_called_at, crm_call_result, crm_calls, crm_done_at, prochain_chantier, prochain_chantier_quoi, chantier_relance_sent')
+            .select('email, nom, entreprise, tel, metier, source, utm, visits, visited_at, last_visit_at, first_seen_at, offer_started_at, crm_status, crm_next, crm_relance, crm_notes, crm_said, crm_updated_at, crm_called_at, crm_call_result, crm_calls, crm_done_at, prochain_chantier, prochain_chantier_quoi, chantier_relance_sent, draft')
             .not('email', 'ilike', '%linkfinderai%').neq('email', 'hamoureliasse@gmail.com')
             .order('last_visit_at', { ascending: false, nullsFirst: false }).limit(2000);
         if (error) { console.error(error); return json({ error: 'db' }, 500); }

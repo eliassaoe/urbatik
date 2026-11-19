@@ -18,6 +18,17 @@ Deno.serve(async (req) => {
     try { body = await req.json(); } catch { return json({ error: 'json' }, 400); }
     const email = str(body.email, 200).toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ error: 'email' }, 422);
+    // Réponses du formulaire (dernier écran, pas encore payé) : les relances renvoient un lien qui les rouvre (?d=).
+    if (body.action === 'draft') {
+        const d: Record<string, string> = {};
+        for (const [k, v] of Object.entries((body.fields ?? {}) as Record<string, unknown>)) {
+            if (/^[a-z_]{2,40}$/.test(k) && typeof v === 'string' && Object.keys(d).length < 40) d[k] = v.slice(0, 400);
+        }
+        const now = new Date().toISOString();
+        const { error } = await db.from('dossier_clients').upsert({ email, draft: d, draft_at: now, updated_at: now }, { onConflict: 'email' });
+        if (error) { console.error(error); return json({ error: 'db' }, 500); }
+        return json({ ok: true });
+    }
     const utm: Record<string, string> = {};
     for (const [k, v] of Object.entries((body.utm ?? {}) as Record<string, unknown>)) {
         if (/^utm_(source|medium|campaign|content|term)$/.test(k)) utm[k] = str(v, 120);

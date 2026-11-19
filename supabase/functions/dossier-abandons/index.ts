@@ -40,21 +40,29 @@ function shell(inner: string): string {
 const btn = (href: string, label: string) =>
     `<p><a href="${esc(href)}" style="display:inline-block;background:#0b0b0c;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">${esc(label)}</a></p>`;
 
-function message(step: number, prenom: string, site: string, call: string): { subject: string; html: string; text: string } {
-    const order = `${site}/commande?utm_source=relance&utm_medium=email&utm_content=r${step + 1}`;
+// Lien qui rouvre la demande déjà remplie (formulaire /commande, paramètre ?d=), sur n'importe quel appareil.
+function reprise(email: string, draft: Record<string, string> | null): string {
+    const e = `&e=${encodeURIComponent(email)}`;
+    if (!draft || !Object.keys(draft).length) return e;
+    const b = btoa(unescape(encodeURIComponent(JSON.stringify(draft)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return `${e}&d=${b}`;
+}
+
+function message(step: number, prenom: string, site: string, call: string, suite = ''): { subject: string; html: string; text: string } {
+    const order = `${site}/commande?utm_source=relance&utm_medium=email&utm_content=r${step + 1}${suite}`;
     const hello = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
     if (step === 0) {
         return {
-            subject: 'Votre dossier de mairie est prêt à partir',
-            html: shell(`<p>${esc(hello)}</p><p>Vous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier (Cerfa, plans, photomontage, notice) et vous le recevez en 72 h.</p>${btn(order, 'Valider mon dossier')}<p>Remboursé si la mairie refuse. Une question ? <a href="${esc(call)}">Écrivez-nous sur WhatsApp</a>.</p>`),
-            text: `${hello}\n\nVous avez préparé votre demande sur Urbatik. Il ne reste qu'à la valider : on s'occupe de tout le dossier et vous le recevez en 72 h.\n\nValider mon dossier : ${order}\n\nRemboursé si la mairie refuse. Une question ? WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
+            subject: 'Votre demande est déjà remplie : il ne reste qu\'à valider',
+            html: shell(`<p>${esc(hello)}</p><p><strong>Votre formulaire est déjà rempli.</strong> Reprenez votre demande là où vous l'avez laissée : toutes vos réponses sont enregistrées, même sur un autre appareil. Il ne reste qu'à la valider : on s'occupe de tout le dossier (Cerfa, plans, photomontage, notice) et vous le recevez en 72 h.</p>${btn(order, 'Reprendre ma demande remplie')}<p>Remboursé si la mairie refuse. Une question ? <a href="${esc(call)}">Écrivez-nous sur WhatsApp</a>.</p>`),
+            text: `${hello}\n\nVotre formulaire est déjà rempli. Reprenez votre demande là où vous l'avez laissée : toutes vos réponses sont enregistrées, même sur un autre appareil. Il ne reste qu'à la valider, vous recevez le dossier en 72 h.\n\nReprendre ma demande remplie : ${order}\n\nRemboursé si la mairie refuse. Une question ? WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
         };
     }
     if (step === 1) {
         return {
             subject: 'Une question avant de lancer votre dossier ?',
-            html: shell(`<p>${esc(hello)}</p><p>Souvent, ce qui retient, c'est une de ces questions :</p><ul><li><strong>Le prix ?</strong> Fixe et annoncé avant de payer : 249 € HT la déclaration préalable, 390 € HT le permis. <a href="${esc(site)}/tarifs">Voir ce qui est inclus</a>.</li><li><strong>Et si la mairie refuse ?</strong> On vous rembourse intégralement.</li><li><strong>Les photos ?</strong> Vous pouvez les envoyer après le paiement, depuis votre téléphone.</li></ul>${btn(order, 'Reprendre ma demande')}<p>Ou <a href="${esc(call)}">écrivez-nous sur WhatsApp</a> et on regarde votre chantier ensemble.</p>`),
-            text: `${hello}\n\nCe qui retient souvent :\n- Le prix : fixe, 249 € HT la déclaration préalable, 390 € HT le permis (${site}/tarifs)\n- Si la mairie refuse : on vous rembourse intégralement\n- Les photos : vous pouvez les envoyer après le paiement\n\nReprendre ma demande : ${order}\nOu sur WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
+            html: shell(`<p>${esc(hello)}</p><p>Souvent, ce qui retient, c'est une de ces questions :</p><ul><li><strong>Le prix ?</strong> Fixe et annoncé avant de payer : 249 € HT la déclaration préalable, 390 € HT le permis. <a href="${esc(site)}/tarifs">Voir ce qui est inclus</a>.</li><li><strong>Et si la mairie refuse ?</strong> On vous rembourse intégralement.</li><li><strong>Les photos ?</strong> Vous pouvez les envoyer après le paiement, depuis votre téléphone.</li></ul>${btn(order, 'Reprendre ma demande (déjà remplie)')}<p>Ou <a href="${esc(call)}">écrivez-nous sur WhatsApp</a> et on regarde votre chantier ensemble.</p>`),
+            text: `${hello}\n\nCe qui retient souvent :\n- Le prix : fixe, 249 € HT la déclaration préalable, 390 € HT le permis (${site}/tarifs)\n- Si la mairie refuse : on vous rembourse intégralement\n- Les photos : vous pouvez les envoyer après le paiement\n\nReprendre ma demande (déjà remplie) : ${order}\nOu sur WhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
         };
     }
     return {
@@ -202,7 +210,7 @@ Deno.serve(async (req) => {
     if (!hook) return json({ error: 'N8N_EMAIL_WEBHOOK absent' }, 503);
 
     const { data: clients, error } = await db.from('dossier_clients')
-        .select('email, nom, offer_started_at, abandon_reminders_sent')
+        .select('email, nom, offer_started_at, abandon_reminders_sent, draft')
         .not('offer_started_at', 'is', null).is('unsubscribed_at', null).lt('abandon_reminders_sent', STEPS_H.length)
         .gte('offer_started_at', new Date(Date.now() - 30 * 86_400_000).toISOString());
     if (error) { console.error(error); return json({ error: 'db' }, 500); }
@@ -226,7 +234,7 @@ Deno.serve(async (req) => {
         if (Date.now() < due) continue;
         if (await paid(c.email)) { await db.from('dossier_clients').update({ abandon_reminders_sent: STEPS_H.length }).eq('email', c.email); continue; }
         const prenom = String(c.nom ?? '').trim().split(/\s+/)[0] ?? '';
-        if (await send(c.email, message(c.abandon_reminders_sent, prenom, site, call))) {
+        if (await send(c.email, message(c.abandon_reminders_sent, prenom, site, call, reprise(c.email, c.draft)))) {
             await db.from('dossier_clients').update({
                 abandon_reminders_sent: c.abandon_reminders_sent + 1, last_abandon_reminder_at: new Date().toISOString(),
             }).eq('email', c.email);
