@@ -375,7 +375,8 @@ const DRAFT = "dx_draft_v1";
       document.getElementById("abri").hidden = form.type_ouvrage.value !== "piscine";
       document.getElementById("thermique").hidden = !besoinThermique();
     }
-    if (isFinal) { renderFinal(); pluStart(); pluRender(); }
+    // 19 nov. 2026, gérant : « fais pas de PLU » dans le formulaire. On laisse les gens payer ; le PLU se vérifie après, dans l'admin.
+    if (isFinal) { renderFinal(); setPrice(form.type_dossier.value || "dp", offerEnd && Date.now() < offerEnd); }
     const first = s.querySelector("input:not([type=radio]):not([type=file]), textarea");
     if (first && matchMedia("(pointer:fine)").matches) setTimeout(() => first.focus(), 60);
     if (dir !== "init") window.scrollTo({ top: 0 });
@@ -398,7 +399,7 @@ const DRAFT = "dx_draft_v1";
     return true;
   }
 
-  function go() { if (valid(steps[i])) { save(); if (steps[i].dataset.key === "existant") pluStart(); show(i + 1); } }
+  function go() { if (valid(steps[i])) { save(); show(i + 1); } }
   next.addEventListener("click", go);
   skip.addEventListener("click", () => { save(); show(i + 1); });
   back.addEventListener("click", () => show(i - 1));
