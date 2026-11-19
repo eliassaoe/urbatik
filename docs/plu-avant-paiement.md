@@ -29,3 +29,7 @@ Après paiement, le générateur refait une vérification complète avec les mes
 
 Premier essai réel (pergola 3,6 m, PLUi Le Mans Métropole, U mixte 1) : « à vérifier » — hauteur limitée à 3 m à l'égout
 si la pergola est classée annexe, et 3,50 m en limite au-delà de 20 m de la rue ; distance à la rue manquante.
+
+## 19 nov. 2026 : le « à vérifier » ne doit pas faire fuir
+Un vérandaliste (Colomiers, 18 m²) a rempli les 17 étapes à minuit, a vu « à vérifier… Faire confirmer ces points par le service urbanisme de Colomiers avant de payer », et est parti sans payer. Le texte de la zone UM7 n'avait pas été extrait (seul le sommaire du PLUi de Toulouse Métropole), d'où une liste de devoirs.
+Correction : dans le formulaire, un « à vérifier » s'affiche « ✅ Rien ne bloque d'après vos chiffres » + les thèmes qu'Urbatik vérifie lui-même, sans la liste `que_faire`. La consigne de l'IA interdit désormais « consultez la mairie avant de payer ». Reste à faire : extraire la bonne partie des règlements découpés par zone (PLUi de grandes métropoles).

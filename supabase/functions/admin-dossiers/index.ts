@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
     // Suivi commercial : page /admin/prospects. Tout contact sauf les adresses internes, visites en tête.
     if (body.action === 'crm_list') {
         const { data, error } = await db.from('dossier_clients')
-            .select('email, nom, entreprise, tel, metier, source, utm, visits, visited_at, last_visit_at, first_seen_at, offer_started_at, crm_status, crm_next, crm_relance, crm_notes, crm_said, crm_updated_at, crm_called_at, crm_call_result, crm_calls, crm_done_at')
+            .select('email, nom, entreprise, tel, metier, source, utm, visits, visited_at, last_visit_at, first_seen_at, offer_started_at, crm_status, crm_next, crm_relance, crm_notes, crm_said, crm_updated_at, crm_called_at, crm_call_result, crm_calls, crm_done_at, prochain_chantier, prochain_chantier_quoi, chantier_relance_sent')
             .not('email', 'ilike', '%linkfinderai%').neq('email', 'hamoureliasse@gmail.com')
             .order('last_visit_at', { ascending: false, nullsFirst: false }).limit(2000);
         if (error) { console.error(error); return json({ error: 'db' }, 500); }
@@ -194,6 +194,9 @@ Deno.serve(async (req) => {
         for (const k of ['nom', 'entreprise', 'tel', 'metier', 'crm_next', 'crm_notes', 'crm_said']) {
             if (typeof f[k] === 'string') patch[k] = f[k].slice(0, 5000) || null;
         }
+        // Prochain chantier : la date où il aura besoin du dossier. La changer relance la suite D de dossier-abandons.
+        if ('prochain_chantier' in f) { patch.prochain_chantier = /^\d{4}-\d{2}-\d{2}$/.test(String(f.prochain_chantier ?? '')) ? f.prochain_chantier : null; patch.chantier_relance_sent = 0; }
+        if (typeof f.prochain_chantier_quoi === 'string') patch.prochain_chantier_quoi = f.prochain_chantier_quoi.slice(0, 200) || null;
         if ('crm_relance' in f) patch.crm_relance = /^\d{4}-\d{2}-\d{2}$/.test(String(f.crm_relance ?? '')) ? f.crm_relance : null;
         if (f.call === 'ok' || f.call === 'no_answer') {
             const { data: c } = await db.from('dossier_clients').select('crm_calls').eq('email', email).maybeSingle();

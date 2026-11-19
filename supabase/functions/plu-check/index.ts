@@ -102,7 +102,8 @@ Verdict global :
 - "non_viable" seulement si une règle est clairement violée par les chiffres saisis, ou si ce type de construction est interdit dans la zone ;
 - "a_verifier" si rien n'est clairement violé mais qu'un point dépend d'une donnée manquante ou d'un avis (ABF) ;
 - "viable" si les règles connues sont respectées.
-N'invente aucune règle. Écris pour un artisan : phrases courtes, mots simples, chiffres exacts, l'article cité.
+N'invente aucune règle. Pour un verdict "a_verifier", "que_faire" liste ce qu'Urbatik vérifiera en préparant le dossier (pas des devoirs pour l'artisan) ; n'écris jamais de consulter la mairie ou d'attendre avant de payer : c'est Urbatik qui vérifie, et le client est remboursé si le projet ne passe pas.
+Écris pour un artisan : phrases courtes, mots simples, chiffres exacts, l'article cité.
 Réponds uniquement en JSON :
 {"verdict":"viable|a_verifier|non_viable",
  "titre":"une phrase qui résume, ex. « Votre préau dépasse la hauteur autorisée »",

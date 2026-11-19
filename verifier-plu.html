@@ -186,7 +186,7 @@ const CONFIG = {
     else { res.classList.add("wait"); res.append(el("h2", "Vérification impossible pour cette adresse")); res.append(el("p", r.adresse_introuvable ? "Adresse non trouvée : vérifiez-la, ou écrivez-nous sur WhatsApp, on regarde à la main." : "Le service ne répond pas pour le moment. Réessayez dans quelques minutes, ou écrivez-nous sur WhatsApp.")); }
     if (o.titre) { const t = el("p", o.titre); t.style.fontWeight = "600"; res.append(t); }
     if (o.explication) res.append(el("p", o.explication));
-    if ((o.que_faire || []).length) { res.append(el("p", r.verdict === "non_viable" ? "Pour qu'il passe :" : "À vérifier :")); const ul = el("ul"); o.que_faire.slice(0, 6).forEach(t => ul.append(el("li", t))); res.append(ul); }
+    if ((o.que_faire || []).length) { res.append(el("p", r.verdict === "non_viable" ? "Pour qu'il passe :" : "Ce qu'on vérifie pour vous avant de faire le dossier :")); const ul = el("ul"); o.que_faire.slice(0, 6).forEach(t => ul.append(el("li", t))); res.append(ul); }
     if (r.faits && r.faits.abf) res.append(el("p", "⚠ Secteur protégé : l'Architecte des Bâtiments de France donne son avis, la mairie répond en 2 mois au lieu d'1."));
     if ((o.regles || []).length) {
       const d = el("details"); d.append(el("summary", "Le détail, règle par règle"));

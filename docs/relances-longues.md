@@ -33,3 +33,9 @@ Colonnes ajoutées (migration `20261118180000_relances_longues.sql`) : `replied_
 
 Premier passage (18 nov., 18 h 50) : 32 prospects importés, 5 déjà venus sur le site (suite B), 5 premiers emails C envoyés
 (réponses du 2 au 8 nov.).
+
+## Suite D : « prochain chantier » (19 nov. 2026)
+Gérant : « on demande c'est quand votre prochain chantier, à quel moment vous en aurez besoin, et on revient à ce moment-là ».
+- CRM `/admin/prospects` : champs « Besoin du dossier le » et « Pour quel chantier » (colonnes `dossier_clients.prochain_chantier`, `prochain_chantier_quoi`). Dans 14 jours ou moins : +8 au score « à appeler en priorité ».
+- `dossier-abandons`, suite D : 7 jours avant la date, email au prospect (« Votre chantier approche ») + email au gérant « 🗓 À appeler ». Le jour même, sans commande : 2e email. Changer la date remet la suite à zéro.
+- À demander à chaque appel : « C'est quand, votre prochain chantier qui demande une déclaration ? Quand aurez-vous besoin du dossier ? »

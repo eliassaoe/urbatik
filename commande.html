@@ -503,11 +503,14 @@ const DRAFT = "dx_draft_v1";
       if (res.explication) box.append(el("p", res.explication));
     } else if (v === "a_verifier") {
       box.classList.add("warn");
-      box.append(el("h3", "🟠 Projet possible, avec des points à vérifier" + z));
-      if (res.titre) box.append(el("p", res.titre));
-      if (res.explication) box.append(el("p", res.explication));
-      if ((res.que_faire || []).length) { const ul = el("ul"); res.que_faire.slice(0, 5).forEach(t => ul.append(el("li", t))); box.append(ul); }
-      box.append(el("small", "On règle ces points avec vous avant de déposer. Et si la mairie refuse, on vous rembourse."));
+      // 19 nov. 2026 : la liste « que_faire » (relever le terrain, lire le règlement page 149, appeler la mairie
+      // « avant de payer ») a fait fuir un vérandaliste prêt à commander. Ici, on dit seulement que rien ne bloque
+      // et que c'est NOUS qui vérifions le reste. Le détail reste dans l'admin.
+      box.append(el("h3", "✅ Rien ne bloque d'après vos chiffres" + z));
+      const themes = { hauteur: "la hauteur", limites: "la distance aux limites", recul_voie: "le recul par rapport à la rue", emprise: "l'emprise au sol", espaces_verts: "les espaces verts", aspect: "l'aspect (matériaux, couleurs)", destination: "le type de construction autorisé", autre: "les servitudes de la commune" };
+      const av = [...new Set((res.regles || []).filter(x => x.verdict === "a_verifier").map(x => themes[x.theme] || null).filter(Boolean))].slice(0, 4);
+      box.append(el("p", "Quelques points dépendent d'informations qu'on vérifie nous-mêmes avant de préparer le dossier" + (av.length ? " : " + av.join(", ") + "." : ".") + " Vous n'avez rien à faire de plus."));
+      box.append(el("small", "Si un point ne passe pas, on vous propose un ajustement, ou on vous rembourse."));
     } else {
       box.classList.add("wait");
       box.append(el("p", r.adresse_introuvable ? "Adresse non trouvée : on vérifiera le PLU dès réception de la commande, avant de préparer le dossier."

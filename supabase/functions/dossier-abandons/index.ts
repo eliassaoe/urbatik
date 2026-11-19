@@ -6,6 +6,9 @@
 //  C. « réponse » : prospect qui a répondu à la prospection Explee (projet creha 61157, lead « Hot »)
 //     sans être venu sur le site → 8 emails sur 5 mois (+10 j, +17 j, +25 j, +40 j, +60 j, +85 j, +115 j, +150 j).
 //     Synchronisé ici à chaque passage depuis la page /relance (données Explee déjà publiées, voir syncExplee).
+//  D. « prochain chantier » (19 nov. 2026) : le gérant a noté au téléphone la date où le prospect aura besoin
+//     d'un dossier (CRM /admin/prospects). 7 jours avant : email au prospect + alerte au gérant pour qu'il appelle.
+//     Le jour même, s'il n'a toujours pas commandé : un 2e email. Changer la date dans le CRM relance la suite.
 // Tout s'arrête dès qu'une commande est payée ; B s'arrête dès que A commence ; C s'arrête dès qu'il visite (B prend le relais).
 // Décision du gérant, 18 nov. 2026 : relancer 6 à 10 fois sur plusieurs mois, le chantier arrive quand il arrive.
 // Appelée toutes les heures par pg_cron (job « dossier-relances-abandons ») avec x-cron-token = CRON_TOKEN.
@@ -270,5 +273,47 @@ Deno.serve(async (req) => {
             replied++;
         }
     }
-    return json({ ok: true, sent, nurtured, synced, replied });
+    // D. Prochain chantier noté dans le CRM.
+    const { data: chantiers, error: dErr } = await db.from('dossier_clients')
+        .select('email, nom, tel, entreprise, prochain_chantier, prochain_chantier_quoi, chantier_relance_sent, chantier_relance_at')
+        .not('prochain_chantier', 'is', null).is('unsubscribed_at', null).lt('chantier_relance_sent', 2)
+        .lte('prochain_chantier', new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10));
+    if (dErr) console.error(dErr);
+    let chantier = 0;
+    for (const c of chantiers ?? []) {
+        if (/@linkfinderai\.com$/i.test(c.email)) continue;
+        const jour = new Date(c.prochain_chantier + 'T08:00:00Z').getTime();
+        const n = c.chantier_relance_sent;
+        // 2e message : le jour même, et jamais moins de 3 jours après le premier.
+        if (n === 1 && (Date.now() < jour || Date.now() - new Date(c.chantier_relance_at ?? 0).getTime() < 3 * 86_400_000)) continue;
+        if (await paid(c.email)) { await db.from('dossier_clients').update({ chantier_relance_sent: 2 }).eq('email', c.email); continue; }
+        const prenom = String(c.nom ?? '').trim().split(/\s+/)[0] ?? '';
+        const quoi = c.prochain_chantier_quoi ? ` (${c.prochain_chantier_quoi})` : '';
+        const date = new Date(c.prochain_chantier).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+        const order = `${site}/commande?utm_source=relance&utm_medium=email&utm_campaign=prochain_chantier&utm_content=d${n + 1}&e=${encodeURIComponent(c.email)}`;
+        const hello = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
+        const m = n === 0
+            ? { subject: 'Votre chantier approche : on lance le dossier de mairie ?',
+                body: `Vous nous aviez dit avoir besoin d'un dossier de mairie vers le ${date}${quoi}. On y est presque. Remplissez la demande en 2 minutes : le dossier est prêt en 72 h, et on vérifie le PLU avant.` }
+            : { subject: "C'est le moment de lancer votre dossier de mairie",
+                body: `C'est la date que vous nous aviez donnée pour votre dossier de mairie${quoi}. Plus il part tôt, plus vite la mairie répond : la demande prend 2 minutes, le dossier est prêt en 72 h.` };
+        const ok = await send(c.email, {
+            subject: m.subject,
+            html: shell(`<p>${esc(hello)}</p><p>${esc(m.body)}</p>${btn(order, 'Lancer mon dossier')}<p>Une question ? <a href="${esc(call)}">Écrivez-nous sur WhatsApp</a>.</p>`)
+                .replace('suite à votre visite sur urbatik.com', 'suite à notre échange sur votre prochain chantier'),
+            text: `${hello}\n\n${m.body}\n\nLancer mon dossier : ${order}\nWhatsApp : ${call}\n\nPour ne plus recevoir d'email, répondez STOP.`,
+        });
+        if (n === 0 && env('ADMIN_EMAIL')) {
+            await send(env('ADMIN_EMAIL'), {
+                subject: `🗓 À appeler : ${c.entreprise || c.nom || c.email} a besoin d'un dossier le ${date}`,
+                html: shell(`<p><strong>${esc(c.entreprise || c.nom || c.email)}</strong>${c.tel ? ` · <a href="tel:${esc(c.tel)}">${esc(c.tel)}</a>` : ''}</p><p>Besoin d'un dossier le ${esc(date)}${esc(quoi)}. Un email de rappel vient de lui être envoyé.</p><p><a href="${esc(site)}/admin/prospects">Ouvrir le CRM</a></p>`),
+                text: `${c.entreprise || c.nom || c.email} ${c.tel ?? ''} : besoin d'un dossier le ${date}${quoi}. ${site}/admin/prospects`,
+            });
+        }
+        if (ok) {
+            await db.from('dossier_clients').update({ chantier_relance_sent: n + 1, chantier_relance_at: new Date().toISOString() }).eq('email', c.email);
+            chantier++;
+        }
+    }
+    return json({ ok: true, sent, nurtured, synced, replied, chantier });
 });

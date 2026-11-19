@@ -97,6 +97,10 @@
         if (h(p.last_visit_at) < 48) s += 4; else if (h(p.last_visit_at) < 24 * 7) s += 2;
         if (p.source === 'explee_reponse' || p.metier) s += 3;          // a répondu à la prospection
         if (p.crm_relance && p.crm_relance <= today()) s += 5;           // rappel promis
+        if (p.prochain_chantier) {                                        // a besoin d'un dossier bientôt (19 nov. 2026)
+            const j = (new Date(p.prochain_chantier) - new Date(today())) / 86400000;
+            if (j <= 14) s += 8; else if (j <= 30) s += 3;
+        }
         if (p.crm_status === 'rdv') s += 4;
         if (p.crm_status === 'pas_repondu') s -= 1;
         return s;
@@ -166,6 +170,7 @@
         head.append(who, right);
         d.appendChild(head);
 
+        if (p.prochain_chantier) { const c = document.createElement('div'); c.className = 'meta'; c.textContent = '🗓 Besoin d\'un dossier le ' + new Date(p.prochain_chantier).toLocaleDateString('fr-FR') + (p.prochain_chantier_quoi ? ' · ' + p.prochain_chantier_quoi : '') + (p.chantier_relance_sent ? ' · relancé' : ''); d.appendChild(c); }
         if (p.crm_said) { const s = document.createElement('div'); s.className = 'said'; s.textContent = '« ' + p.crm_said + ' »'; d.appendChild(s); }
         if (p.orders && p.orders.length) {
             const o = document.createElement('div'); o.className = 'meta';
@@ -184,6 +189,11 @@
         hook(st, p, 'crm_status');
         f.append(field('Statut', st), field('Prochaine action', input(p, 'crm_next')), field('Relance le', input(p, 'crm_relance', 'date')));
         d.appendChild(f);
+        // « C'est quand votre prochain chantier ? Quand aurez-vous besoin du dossier ? » : on revient à ce moment-là
+        // (email au prospect 7 jours avant + alerte au gérant, automatiques).
+        const fc = document.createElement('div'); fc.className = 'fields';
+        fc.append(field('Besoin du dossier le', input(p, 'prochain_chantier', 'date')), field('Pour quel chantier', input(p, 'prochain_chantier_quoi')));
+        d.appendChild(fc);
 
         const f2 = document.createElement('div'); f2.className = 'fields2';
         f2.append(field("Notes d'appel", input(p, 'crm_notes', 'area')), field('Téléphone', input(p, 'tel')));
