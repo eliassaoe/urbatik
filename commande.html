@@ -91,6 +91,34 @@ textarea{resize:vertical;min-height:110px}
 .ticks li::before{content:"✓ ";color:var(--green);font-weight:700}
 .pay{width:100%;font-size:18px;padding:17px}
 [hidden]{display:none!important}
+.hdr{display:flex;align-items:center;gap:14px}
+.tel{font-size:14px;font-weight:600;text-decoration:none;border:1.5px solid var(--line);border-radius:10px;padding:6px 10px;white-space:nowrap}
+.opt{font-weight:400;color:var(--muted)}
+.choice:has(input[type=checkbox]:checked){border-color:var(--accent);background:var(--soft)}
+.choice:has(input[type=checkbox]:checked) .k{background:var(--accent);border-color:var(--accent);color:#fff}
+.reco,.fcard{border:1.5px solid var(--line);border-radius:16px;padding:20px;margin:0 0 14px}
+.reco{border-color:var(--accent)}
+.reco h2,.fcard h2{margin:0 0 4px;font-size:24px;letter-spacing:-.02em}
+.reco .badge,.fcard .badge{display:inline-block;font-size:12px;font-weight:700;background:#eefaf1;color:#166534;border-radius:6px;padding:3px 8px;margin:0 0 10px}
+.fprix{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:8px 0}
+.fprix small{font-size:14px;font-weight:500;color:var(--muted)}
+.fcard ul,.reco ul,.cmd ul{list-style:none;padding:0;margin:10px 0 14px;display:grid;gap:6px;font-size:15px}
+.fcard li::before,.reco li::before,.cmd li::before{content:"✓ ";color:var(--green);font-weight:700}
+.fcard li.non,.reco li.non{color:var(--muted)}
+.fcard li.non::before,.reco li.non::before{content:"– ";color:var(--muted)}
+.formules{display:grid;gap:12px;margin-top:10px}
+.cmd{border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:0 0 14px}
+.cmd .l{display:flex;justify-content:space-between;gap:12px;font-weight:600}
+.modes{display:grid;gap:10px;margin:0 0 16px}
+.mode{display:block;border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer}
+.mode input{position:absolute;opacity:0;pointer-events:none}
+.mode:has(input:checked){border-color:var(--accent);background:var(--soft)}
+.mtop{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.mprix{font-weight:700;font-size:20px}.mprix s{font-weight:400;font-size:15px;color:var(--muted)}
+.mode .offer-tag,.mode .hint{display:block;margin-top:6px;font-size:14px}
+.after{margin-top:18px;display:grid;gap:4px;font-size:15px}
+.after p{margin:0 0 10px}
+@media(max-width:460px){.tel{padding:5px 8px;font-size:13px}.count{display:none}}
 .plu{border-radius:14px;padding:14px 16px;margin:0 0 16px;font-size:15px;border:1px solid var(--line)}
 .plu h3{margin:0 0 6px;font-size:16px}
 .plu p{margin:6px 0}
@@ -115,7 +143,7 @@ textarea{resize:vertical;min-height:110px}
 <header>
   <a class="logo" id="logo" href="/">Urbatik</a>
   <button type="button" class="back" id="back" hidden>← Retour</button>
-  <span class="count" id="count"></span>
+  <span class="hdr"><span class="count" id="count"></span><a class="tel" href="tel:+33626344475" id="tel">📞 06 26 34 44 75</a></span>
 </header>
 
 <main>
@@ -150,6 +178,17 @@ textarea{resize:vertical;min-height:110px}
     </div>
   </section>
 
+  <section class="q" data-key="delai">
+    <h1>Dans quel délai voulez-vous déposer le dossier ?</h1>
+    <p class="help">On organise la préparation en fonction.</p>
+    <div class="choices grid">
+      <label class="choice"><input type="radio" name="delai_souhaite" value="asap" required><span class="k">A</span><span>🚀 Dès que possible</span></label>
+      <label class="choice"><input type="radio" name="delai_souhaite" value="semaine"><span class="k">B</span><span>⏱️ Dans la semaine</span></label>
+      <label class="choice"><input type="radio" name="delai_souhaite" value="mois"><span class="k">C</span><span>📅 Dans le mois</span></label>
+      <label class="choice"><input type="radio" name="delai_souhaite" value="ne_sait_pas"><span class="k">D</span><span>⏳ Je ne sais pas encore</span></label>
+    </div>
+  </section>
+
   <section class="q" data-key="adresse">
     <h1>Où se trouve le chantier ?</h1>
     <p class="help">On vérifie les règles d'urbanisme de cette adresse.</p>
@@ -163,44 +202,66 @@ textarea{resize:vertical;min-height:110px}
   <!-- Formulaire court (19 nov. 2026, gérant : « il faut que le paiement soit super simple »). Avant de payer :
        type de dossier, ouvrage, adresse, contact. Dimensions, matériaux, propriétaire, photos : après le paiement,
        sur la page de suivi (fiche technique). Ne rien rajouter ici sans en parler au gérant. -->
-  <section class="q" data-key="contact">
-    <p class="kicker">Presque fini</p>
-    <h1>Où vous envoyer le dossier ?</h1>
-    <p class="help">Les mesures et les photos, vous nous les donnez après, depuis votre lien de suivi.</p>
-    <label class="f">Votre nom<input name="contact_nom" required autocomplete="name" placeholder="Jean Dupont"></label>
-    <label class="f">Votre entreprise<input name="entreprise" required autocomplete="organization" placeholder="Vérandas du Rhône"></label>
+  <section class="q" data-key="email">
+    <h1>Votre adresse email</h1>
+    <p class="help">👉 Pour sauvegarder vos réponses et vous envoyer votre dossier. Vous pourrez modifier vos réponses plus tard.</p>
     <label class="f">Email<input name="contact_email" type="email" required autocomplete="email" placeholder="jean@entreprise.fr"></label>
-    <label class="f">Téléphone<input name="contact_tel" type="tel" required autocomplete="tel" placeholder="06 12 34 56 78"></label>
+    <p class="hint">🔒 Vos données sont en sécurité : elles servent uniquement à préparer votre dossier.</p>
+  </section>
+
+  <!-- Coordonnées à la LegalPlace (20 nov. 2026) : seul le nom est obligatoire, le reste peut attendre. -->
+  <section class="q" data-key="contact">
+    <h1>Vos coordonnées</h1>
+    <p class="help">👉 Si on a besoin d'une précision sur votre dossier, on vous appelle plutôt que de vous faire attendre.</p>
+    <label class="f">Votre nom<input name="contact_nom" required autocomplete="name" placeholder="Jean Dupont"></label>
+    <label class="f">Votre entreprise <span class="opt">(facultatif)</span><input name="entreprise" autocomplete="organization" placeholder="Vérandas du Rhône"></label>
+    <label class="f">Téléphone <span class="opt">(facultatif)</span><input name="contact_tel" type="tel" autocomplete="tel" placeholder="06 12 34 56 78"></label>
+  </section>
+
+  <section class="q" data-key="besoin">
+    <h1>Que recherchez-vous ?</h1>
+    <p class="help">Plusieurs réponses possibles. On vous recommande la formule qui va avec.</p>
+    <div class="choices">
+      <label class="choice"><input type="checkbox" name="besoin" value="seul"><span class="k">A</span><span>Seulement le dossier : je le dépose moi-même</span></label>
+      <label class="choice"><input type="checkbox" name="besoin" value="accompagne"><span class="k">B</span><span>Un dossier relu par un pro et suivi jusqu'à l'accord de la mairie</span></label>
+      <label class="choice"><input type="checkbox" name="besoin" value="vite"><span class="k">C</span><span>Que ce soit traité en priorité, avec un conseiller</span></label>
+      <label class="choice"><input type="checkbox" name="besoin" value="renseigne"><span class="k">D</span><span>Je me renseigne</span></label>
+    </div>
+  </section>
+
+  <section class="q" data-key="formule">
+    <p class="kicker">D'après vos réponses, voici ce que nous vous recommandons</p>
+    <div class="reco" id="reco"></div>
+    <button type="button" class="ghost" id="voirTout">Voir toutes les formules ↓</button>
+    <div class="formules" id="formules" hidden></div>
   </section>
 
   <section class="q" data-key="final">
-    <p class="kicker">Votre dossier est prêt à partir</p>
-    <h1>Dernière étape : envoyer la commande.</h1>
+    <h1>Récapitulons votre commande.</h1>
+    <div class="cmd" id="cmd"></div>
     <div class="recap" id="recap"></div>
     <p class="note-later" id="laterNote" hidden></p>
     <div class="plu" id="plu" hidden aria-live="polite"></div>
-    <div class="price">
-      <div id="offerOn" hidden>
-        <p class="offer-tag">⚡ Offre premier dossier : -30 % si vous commandez maintenant</p>
-        <p style="margin:6px 0 4px"><s id="full"></s>&nbsp; <span class="big" id="offerPrice"></span></p>
-        <p class="timer">L'offre expire dans <strong id="timer">10:00</strong></p>
-      </div>
-      <div id="offerOff">
-        <p style="margin:0 0 4px;color:var(--muted)">Prix fixe, tout compris</p>
-        <p style="margin:0"><span class="big" id="normal"></span></p>
-      </div>
+    <p class="kicker" style="margin-top:6px">Sélectionnez votre mode de paiement</p>
+    <div class="modes">
+      <label class="mode"><input type="radio" name="paiement_mode" value="total" checked>
+        <span class="mtop"><strong>Payer maintenant</strong><span class="mprix"><s id="full"></s> <span id="maintenant"></span></span></span>
+        <span class="offer-tag" id="offerOn" hidden>⚡ -30 % offert sur votre premier dossier · expire dans <strong id="timer">10:00</strong></span>
+      </label>
+      <label class="mode" id="modeAcompte" hidden><input type="radio" name="paiement_mode" value="acompte">
+        <span class="mtop"><strong>Payer une partie aujourd'hui</strong><span class="mprix" id="acompte"></span></span>
+        <span class="hint" id="acompteTxt"></span>
+      </label>
     </div>
-    <button id="submit" class="btn pay" type="submit">Envoyer ma commande et payer</button>
+    <button id="submit" class="btn pay" type="submit">Payer en toute sécurité →</button>
     <p class="err" id="error" role="alert"></p>
     <p class="hint" id="progress" aria-live="polite"></p>
-    <ul class="ticks">
-      <li>Livré en 72 h</li>
-      <li>Suivi jusqu'à l'accord de la mairie</li>
-      <li>Remboursé si la mairie refuse, ou si le dossier ne vous convient pas (40 jours)</li>
-      <li>Paiement sécurisé par Dodo Payments</li>
-      <li>En payant, vous acceptez les <a href="/cgv" target="_blank">conditions générales de vente</a></li>
-    </ul>
-    <a class="later" data-link="call" href="#" style="display:flex;justify-content:center;text-decoration:none;margin-top:18px">Une question avant ? Écrivez à un conseiller sur WhatsApp</a>
+    <div class="after">
+      <p><strong>Accès immédiat à votre suivi</strong><br>Juste après le paiement, vous arrivez sur votre page de suivi pour ajouter les mesures et 3 photos du chantier (5 minutes, depuis votre téléphone).</p>
+      <p id="garantieTxt"><strong>Garantie anti-refus</strong><br>Si la mairie demande une pièce ou refuse le dossier, on le retravaille sans frais. S'il ne peut pas passer, on vous rembourse.</p>
+      <p><strong>Un conseiller dédié</strong><br>Une question ? Appelez ou écrivez sur WhatsApp au <a href="tel:+33626344475">06 26 34 44 75</a>.</p>
+      <p class="hint">Paiement sécurisé par Dodo Payments. En payant, vous acceptez les <a href="/cgv" target="_blank">conditions générales de vente</a>.</p>
+    </div>
   </section>
 
   <div class="actions" id="nav">
@@ -221,6 +282,25 @@ const CONFIG = {
 const PRICES = { dp: "249 € HT", pc: "390 € HT", a_determiner: "249 € HT" };
 const OFFER = { dp: "174 € HT", pc: "273 € HT", a_determiner: "174 € HT" };
 const TYPE_LABEL = { dp: "Déclaration préalable", pc: "Permis de construire", a_determiner: "À déterminer" };
+// Trois formules à la LegalPlace (20 nov. 2026, docs/parcours-legalplace.md). Mêmes prix que PRIX dans
+// supabase/functions/_shared/dossier-express.ts : les changer aux deux endroits.
+const PRIX = { dp: { essentiel: 199, pro: 249, premium: 349 }, pc: { essentiel: 329, pro: 390, premium: 490 }, a_determiner: { essentiel: 199, pro: 249, premium: 349 } };
+const offre = e => Math.round(e * 0.7);
+const FORMULES = {
+  essentiel: { label: "Essentiel", pitch: "Le dossier complet, vous le déposez vous-même.", delai: "72 h" },
+  pro: { label: "Pro", pitch: "Le dossier relu par un pro, suivi jusqu'à l'accord de la mairie.", delai: "72 h" },
+  premium: { label: "Premium", pitch: "Traité en priorité, avec votre conseiller, jusqu'à l'accord.", delai: "48 h" },
+};
+const LIGNES = [
+  ["Dossier complet : Cerfa, plans, photomontage, notice", ["essentiel", "pro", "premium"]],
+  ["Relu par un professionnel avant envoi", ["pro", "premium"]],
+  ["Suivi jusqu'à l'accord de la mairie", ["pro", "premium"]],
+  ["Garantie anti-refus : on retravaille sans frais", ["pro", "premium"]],
+  ["Traitement prioritaire", ["premium"]],
+  ["Appel de cadrage avec votre conseiller", ["premium"]],
+  ["Modifications illimitées jusqu'à l'accord", ["premium"]],
+];
+let TARIFS = { paiement_libre: false, acompte: 49 };
 const FILE_FIELDS = []; // photos : après le paiement, sur /suivi (formulaire court, 19 nov. 2026)
 const DRAFT = "dx_draft_v1";
 
@@ -239,6 +319,47 @@ const DRAFT = "dx_draft_v1";
   const track = (n, p) => { try { window.posthog && posthog.capture(n, Object.assign({ offer: "dossier_express" }, p || {})); } catch (e) {} };
   let i = 0;
 
+  fetch(CONFIG.supabaseUrl + "/functions/v1/create-order", { method: "POST", headers: { "Content-Type": "application/json", apikey: CONFIG.supabaseKey },
+    body: JSON.stringify({ action: "tarifs" }) }).then(r => r.json()).then(d => { if (d && typeof d.paiement_libre === "boolean") TARIFS = { paiement_libre: d.paiement_libre, acompte: (d.acompte_cents || 4900) / 100 }; }).catch(() => {});
+  const payable = f => TARIFS.paiement_libre || f === "pro";
+  function recommandee() {
+    const b = [...form.querySelectorAll("input[name=besoin]:checked")].map(x => x.value);
+    let f = "pro";
+    if (b.includes("vite") || (form.delai_souhaite && form.delai_souhaite.value === "asap" && !b.includes("seul"))) f = "premium";
+    else if (b.length && b.every(x => x === "seul")) f = "essentiel";
+    return payable(f) ? f : "pro";
+  }
+  function carte(f, reco) {
+    const t = form.type_dossier.value || "dp";
+    const d = document.createElement(reco ? "div" : "label"); d.className = reco ? "" : "fcard";
+    const h = document.createElement("h2"); h.textContent = FORMULES[f].label;
+    const b = document.createElement("span"); b.className = "badge"; b.textContent = reco ? "Recommandée pour vous" : (f === recommandee() ? "Recommandée" : "");
+    const p = document.createElement("p"); p.className = "hint"; p.style.margin = "0"; p.textContent = FORMULES[f].pitch;
+    const pr = document.createElement("div"); pr.className = "fprix"; pr.textContent = PRIX[t][f] + " € HT "; const sm = document.createElement("small"); sm.textContent = "tout compris"; pr.append(sm);
+    const ul = document.createElement("ul");
+    const dl = document.createElement("li"); dl.textContent = "Livré en " + FORMULES[f].delai; ul.append(dl);
+    LIGNES.forEach(([txt, fs]) => { const li = document.createElement("li"); li.textContent = txt; if (!fs.includes(f)) li.className = "non"; if (fs.includes(f) || reco === false) ul.append(li); });
+    if (b.textContent) d.append(b);
+    d.append(h, p, pr, ul);
+    if (!reco) {
+      const r = document.createElement("input"); r.type = "radio"; r.name = "formule"; r.value = f; r.style.cssText = "position:absolute;opacity:0";
+      const go = document.createElement("span"); go.className = "btn"; go.textContent = "Choisir " + FORMULES[f].label + " →";
+      d.append(r, go);
+    }
+    return d;
+  }
+  function renderFormules() {
+    const f = recommandee();
+    const reco = document.getElementById("reco"); reco.textContent = ""; reco.append(carte(f, true));
+    const all = document.getElementById("formules"); all.textContent = "";
+    ["essentiel", "pro", "premium"].filter(payable).forEach(x => all.append(carte(x, false)));
+    document.getElementById("voirTout").hidden = all.children.length < 2;
+    const r = form.querySelector(`input[name=formule][value=${f}]`); if (r && !form.querySelector("input[name=formule]:checked")) r.checked = true;
+    next.innerHTML = `Continuer avec ${FORMULES[(form.querySelector("input[name=formule]:checked") || r).value].label} <span aria-hidden="true">→</span>`;
+    next.hidden = false;
+  }
+  document.getElementById("voirTout").addEventListener("click", () => { const a = document.getElementById("formules"); a.hidden = !a.hidden; track("dossier_express_voir_formules"); });
+
   document.querySelectorAll('[data-link="call"]').forEach(a => {
     a.href = CONFIG.call; a.target = "_blank"; a.rel = "noopener";
     a.addEventListener("click", () => track("dossier_express_click_call", { from: "form" }));
@@ -254,6 +375,9 @@ const DRAFT = "dx_draft_v1";
       else if (el.type !== "file") el.value = v;
     }
   } catch (e) {}
+  // Tuiles de l'accueil (à la LegalPlace) : /commande?ouvrage=veranda → les travaux sont déjà choisis.
+  const OUV = params.get("ouvrage");
+  if (OUV) { const r = form.querySelector(`input[name=type_ouvrage][value="${CSS.escape(OUV)}"]`); if (r) { r.checked = true; const ty = form.querySelector(`input[name=type_dossier][value=${OUV === "extension" ? "a_determiner" : "dp"}]`); if (ty && !form.querySelector("input[name=type_dossier]:checked")) ty.checked = true; } }
   const pre = params.get("type");
   if (pre && PRICES[pre]) form.querySelector(`input[name=type_dossier][value=${pre}]`).checked = true;
   // Reprise d'une demande déjà remplie ailleurs (ex. sur son téléphone) : ?d=<JSON en base64url> envoyé au prospect
@@ -296,7 +420,9 @@ const DRAFT = "dx_draft_v1";
     const later = s.hasAttribute("data-later");
     skip.textContent = later ? "Je l'enverrai plus tard" : "Passer";
     skip.className = later ? "later" : "ghost";
+    next.innerHTML = 'Continuer <span aria-hidden="true">→</span>';
     next.hidden = isChoice && !s.querySelector("input:checked");
+    if (s.dataset.key === "formule") renderFormules();
     enter.hidden = isChoice;
     back.hidden = i === 0;
     if (later) { const has = !!s.querySelector("input[type=file]").files[0]; next.hidden = !has; enter.hidden = true; }
@@ -332,7 +458,20 @@ const DRAFT = "dx_draft_v1";
     return true;
   }
 
-  function go() { if (valid(steps[i])) { save(); show(i + 1); } }
+  function go() {
+    if (!valid(steps[i])) return;
+    save();
+    // Email donné (comme chez LegalPlace, au milieu du parcours) : les réponses sont sauvegardées côté serveur,
+    // les relances renverront la demande déjà remplie.
+    if (steps[i].dataset.key === "email") {
+      const email = form.contact_email.value.trim().toLowerCase(), fields = {};
+      for (const [k, v] of new FormData(form).entries()) if (typeof v === "string" && v) fields[k] = v;
+      fetch(CONFIG.supabaseUrl + "/functions/v1/dossier-visit", { method: "POST", headers: { "Content-Type": "application/json", apikey: CONFIG.supabaseKey },
+        body: JSON.stringify({ action: "draft", email, fields }), keepalive: true }).catch(() => {});
+      try { posthog.identify(email, { email, offer: "dossier_express" }); } catch (x) {}
+    }
+    show(i + 1);
+  }
   next.addEventListener("click", go);
   skip.addEventListener("click", () => { save(); show(i + 1); });
   back.addEventListener("click", () => show(i - 1));
@@ -343,6 +482,8 @@ const DRAFT = "dx_draft_v1";
   form.addEventListener("input", e => { e.target.classList && e.target.classList.remove("invalid"); stepErr.textContent = ""; });
   form.addEventListener("change", e => {
     const t = e.target;
+    if (t.type === "checkbox") { next.hidden = !steps[i].querySelector("input:checked"); save(); }
+    if (t.type === "radio" && t.name === "paiement_mode") { setPrice(form.type_dossier.value || "dp", offerEnd && Date.now() < offerEnd); return; }
     if (t.type === "radio") { save(); setTimeout(() => show(i + 1), 220); }
     if (t.type === "file") {
       const box = t.closest(".drop");
@@ -450,39 +591,44 @@ const DRAFT = "dx_draft_v1";
     if (r.faits && r.faits.abf) box.append(el("p", "⚠ Le terrain est dans un secteur protégé : l'Architecte des Bâtiments de France donne son avis, la mairie répond en 2 mois au lieu d'1."));
   }
 
+  function formuleChoisie() { const r = form.querySelector("input[name=formule]:checked"); return r && payable(r.value) ? r.value : "pro"; }
   function renderFinal() {
-    const t = form.type_dossier.value || "dp";
+    const t = form.type_dossier.value || "dp", f = formuleChoisie();
     const v = n => (form.elements[n] && form.elements[n].value) || "";
     const ouvrage = form.querySelector("input[name=type_ouvrage]:checked");
-
+    // La commande, ligne par ligne, avec ce qui est fait pour vous (comme le récap LegalPlace).
+    const cmd = document.getElementById("cmd"); cmd.textContent = "";
+    const l = document.createElement("div"); l.className = "l";
+    const a = document.createElement("span"); a.textContent = `${TYPE_LABEL[t]} · formule ${FORMULES[f].label}`;
+    const b = document.createElement("span"); b.textContent = PRIX[t][f] + " € HT"; l.append(a, b); cmd.append(l);
+    const ul = document.createElement("ul"); { const li = document.createElement("li"); li.textContent = "Livré en " + FORMULES[f].delai; ul.append(li); } LIGNES.filter(([, fs]) => fs.includes(f)).forEach(([x]) => { const li = document.createElement("li"); li.textContent = x; ul.append(li); }); cmd.append(ul);
     const rows = [
-      ["Dossier", TYPE_LABEL[t]],
       ["Travaux", ouvrage ? ouvrage.parentElement.textContent.replace(/^[A-J]/, "").trim() : ""],
       ["Chantier", `${v("adresse_chantier")}, ${v("code_postal")} ${v("ville")}`],
-
       ["Envoi à", v("contact_email")],
     ];
-    const ln = document.getElementById("laterNote");
-    ln.hidden = false;
-    ln.textContent = "Après le paiement, un lien de suivi vous permet d'ajouter les mesures et 3 photos du chantier (5 minutes, depuis votre téléphone). On commence dès qu'on les a.";
     const recap = document.getElementById("recap");
     recap.innerHTML = "";
     rows.forEach(([k, val]) => { const d = document.createElement("div"); const a = document.createElement("span"); a.textContent = k; const b = document.createElement("strong"); b.textContent = val; d.append(a, b); recap.append(d); });
-    document.getElementById("full").textContent = PRICES[t];
-    document.getElementById("offerPrice").textContent = OFFER[t];
-    document.getElementById("normal").textContent = PRICES[t];
+    document.getElementById("garantieTxt").hidden = f === "essentiel";
+    document.getElementById("modeAcompte").hidden = !TARIFS.paiement_libre;
+    if (!TARIFS.paiement_libre) form.querySelector("input[name=paiement_mode][value=total]").checked = true;
     setPrice(t, offerEnd && Date.now() < offerEnd);
-    track("dossier_express_final_step_view", { type: t });
+    track("dossier_express_final_step_view", { type: t, formule: f });
     startOffer(t, v("contact_email"));
   }
 
   // Offre « 10 minutes » : le chrono est tenu par le serveur (un rechargement ne le relance pas).
   let offerEnd = 0, tick = null;
   function setPrice(t, on) {
+    const f = formuleChoisie(), plein = PRIX[t][f], now = on ? offre(plein) : plein;
     document.getElementById("offerOn").hidden = !on;
-    document.getElementById("offerOff").hidden = on;
-    const r = plu.res;
-    document.getElementById("submit").textContent = `Payer ${on ? OFFER[t] : PRICES[t]} et envoyer`;
+    document.getElementById("full").textContent = on ? plein + " €" : "";
+    document.getElementById("maintenant").textContent = now + " € HT";
+    document.getElementById("acompte").textContent = TARIFS.acompte + " € HT";
+    document.getElementById("acompteTxt").textContent = `Aujourd'hui ${TARIFS.acompte} €, le reste (${now - TARIFS.acompte} €) à la livraison du dossier.`;
+    const acompte = (form.querySelector("input[name=paiement_mode]:checked") || {}).value === "acompte";
+    document.getElementById("submit").textContent = `Payer ${acompte ? TARIFS.acompte : now} € HT en toute sécurité →`;
   }
   async function startOffer(t, email) {
     // Garder la demande côté serveur : les relances contiendront un lien qui la rouvre déjà remplie.
@@ -496,6 +642,7 @@ const DRAFT = "dx_draft_v1";
       const r = await call("create-order", {
         action: "offer_start", email, type_dossier: t, nom: form.elements.contact_nom.value,
         entreprise: form.elements.entreprise.value, tel: form.elements.contact_tel.value, utm: utmParams(),
+        delai_souhaite: form.delai_souhaite ? form.delai_souhaite.value : "",
       });
       try { posthog.identify(email.toLowerCase(), { email: email.toLowerCase(), offer: "dossier_express" }); } catch (x) {}
       if (!r.active || !r.expires_at) { setPrice(t, false); track("dossier_express_offer_shown", { active: false, eligible: r.eligible }); return; }
@@ -561,6 +708,9 @@ const DRAFT = "dx_draft_v1";
         track("dossier_express_thermique", { choix: fields.chauffee, surface: fields.surface_m2 });
       }
       delete fields.chauffee;
+      delete fields.besoin;
+      fields.formule = formuleChoisie();
+      fields.paiement_mode = TARIFS.paiement_libre ? ((form.querySelector("input[name=paiement_mode]:checked") || {}).value || "total") : "total";
       progress.textContent = "Préparation des photos…";
       const files = [];
       for (const name of FILE_FIELDS) { const f = form.elements[name].files[0]; if (f) files.push({ kind: name, file: await shrink(f) }); }
@@ -606,7 +756,7 @@ const DRAFT = "dx_draft_v1";
   if (reprise) {
     const k = steps.findIndex((st, n) => n < steps.length - 1 && [...st.querySelectorAll("[required]")].some(el => !el.checkValidity()));
     show(k < 0 ? steps.length - 1 : k, "init");
-  } else show(pre && PRICES[pre] ? 1 : 0, "init");
+  } else show(OUV && form.querySelector("input[name=type_ouvrage]:checked") ? steps.findIndex(s => s.dataset.key === "delai") : pre && PRICES[pre] ? 1 : 0, "init");
 })();
 </script>
 </body>

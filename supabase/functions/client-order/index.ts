@@ -11,6 +11,7 @@ import {
     admin, json, loadSettings, CORS, env, TYPES, OUVRAGES, FILE_KINDS, BUCKET, MAX_FILE_BYTES, ALLOWED_TYPES, SITE_URL, CALL_URL,
     DELAI, PRESUME_JOURS, NON_POSSIBLE_JOURS, SUIVI_MAIRIE, missingItems, safeName, sendEmail, emailShell, esc, TypeDossier,
     FICHE, validerFiche, ficheManquants, facadesAttendues, FICHE_LIBELLE, lancerGeneration, orderFromFiche, ficheAvecCommande,
+    FORMULES, Formule, creerPaiement, euros,
 } from '../_shared/dossier-express.ts';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -64,7 +65,18 @@ Deno.serve(async (req) => {
             fiche_libelle: FICHE_LIBELLE,
             fiche_manquants: ficheManquants(o.type_ouvrage, ficheAvecCommande(o)),
             photos_attendues: facadesAttendues(o.fiche_technique).map(k => [k, FILE_KINDS[k]]),
+            formule: FORMULES[(o.formule ?? 'pro') as Formule].label,
+            formule_inclus: FORMULES[(o.formule ?? 'pro') as Formule].inclus,
+            // Payé en partie (parcours LegalPlace) : le solde à régler depuis cette page.
+            solde: o.paiement_mode === 'acompte' && o.paid_at && !o.solde_paid_at ? euros(o.montant_ht_cents - (o.acompte_cents ?? 0)) + ' HT' : null,
         });
+    }
+
+    if (body.action === 'payer_solde') {
+        if (o.paiement_mode !== 'acompte' || !o.paid_at || o.solde_paid_at) return json({ error: 'statut' }, 409);
+        const url = await creerPaiement(o, o.montant_ht_cents - (o.acompte_cents ?? 0), 'solde', `${SITE_URL}/suivi?token=${o.client_token}&solde=1`);
+        if (!url) return json({ error: 'paiement_non_configure' }, 503);
+        return json({ checkout_url: url });
     }
 
     // Fiche technique (page /suivi) : enregistrable en plusieurs fois, jusqu'à la préparation du dossier.

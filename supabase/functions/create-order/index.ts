@@ -13,11 +13,15 @@
 import {
     admin, json, loadSettings, CORS, TYPES, OUVRAGES, FILE_KINDS, BUCKET, MAX_FILE_BYTES, ALLOWED_TYPES,
     SITE_URL, env, randomToken, safeName, offerStatus, TypeDossier,
+    PRIX, prixOffre, ACOMPTE_CENTS, estFormule, paiementLibre, creerPaiement,
 } from '../_shared/dossier-express.ts';
+
+const DELAIS = ['asap', 'semaine', 'mois', 'ne_sait_pas'];
 
 // Formulaire court (19 nov. 2026) : seuls le contact et l'adresse sont obligatoires avant le paiement.
 // Le reste (dimensions, matériaux, propriétaire…) arrive après, par la fiche technique de /suivi.
-const TEXT = ['entreprise', 'contact_nom', 'contact_email', 'contact_tel', 'adresse_chantier', 'code_postal', 'ville'];
+// 20 nov. 2026 (parcours LegalPlace) : entreprise et téléphone facultatifs, seul le nom est demandé.
+const TEXT = ['contact_nom', 'contact_email', 'adresse_chantier', 'code_postal', 'ville'];
 const TEXT_OPT = ['nom_client_final', 'dimensions', 'distance_limites', 'materiaux', 'couleurs'];
 
 function str(v: unknown, max = 500): string {
@@ -40,6 +44,8 @@ function validate(f: Record<string, unknown>): { row?: Record<string, unknown>; 
         if (!row[k]) errors.push(k);
     }
     for (const k of TEXT_OPT) row[k] = str(f[k], 500) || null;
+    row.entreprise = str(f.entreprise, 500) || row.contact_nom;   // colonnes non nulles : le nom tient lieu d'entreprise
+    row.contact_tel = str(f.contact_tel, 50);
     row.contact_email = String(row.contact_email).toLowerCase();
     if (row.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(row.contact_email))) errors.push('contact_email');
     if (row.code_postal && !/^\d{5}$/.test(String(row.code_postal))) errors.push('code_postal');
@@ -52,6 +58,10 @@ function validate(f: Record<string, unknown>): { row?: Record<string, unknown>; 
         row[k] = Number.isNaN(n) ? null : n;
     }
     row.terrain_modifie = str(f.terrain_modifie) === 'oui';
+    // Parcours LegalPlace (20 nov. 2026) : formule choisie, délai souhaité, payer tout ou une partie.
+    row.formule = estFormule(f.formule) ? f.formule : 'pro';
+    row.delai_souhaite = DELAIS.includes(str(f.delai_souhaite)) ? str(f.delai_souhaite) : null;
+    row.paiement_mode = str(f.paiement_mode) === 'acompte' ? 'acompte' : 'total';
     row.description = str(f.description, 4000) || null;
     return errors.length ? { errors } : { row, errors };
 }
@@ -73,19 +83,6 @@ function checkFiles(files: unknown): { list?: Manifest[]; errors: string[] } {
     return errors.length ? { errors } : { list, errors };
 }
 
-function checkoutUrl(order: Record<string, unknown>, product: string): string | null {
-    if (!product) return null;
-    const u = new URL(env('DODO_CHECKOUT_BASE', 'https://checkout.dodopayments.com/buy/').replace(/\/?$/, '/') + product);
-    u.searchParams.set('quantity', '1');
-    u.searchParams.set('email', String(order.contact_email));
-    u.searchParams.set('fullName', String(order.contact_nom));
-    u.searchParams.set('redirect_url', `${SITE_URL}/merci?commande=${order.id}`);
-    u.searchParams.set('metadata_source', 'dossier_express');
-    u.searchParams.set('metadata_order_id', String(order.id));
-    u.searchParams.set('metadata_type_dossier', String(order.type_dossier));
-    return u.toString();
-}
-
 Deno.serve(async (req) => {
     await loadSettings();
     if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -95,7 +92,7 @@ Deno.serve(async (req) => {
     try { body = await req.json(); } catch { return json({ error: 'json' }, 400); }
     // Présence des réglages (oui/non, jamais les valeurs) : diagnostic sans accès au tableau de bord.
     if (body.action === 'health') {
-        const names = ['DODO_WEBHOOK_SECRET', 'DODO_PRODUCT_DP', 'DODO_PRODUCT_PC', 'DODO_PRODUCT_DP_OFFRE', 'DODO_PRODUCT_PC_OFFRE', 'N8N_EMAIL_WEBHOOK',
+        const names = ['DODO_WEBHOOK_SECRET', 'DODO_PRODUCT_DP', 'DODO_PRODUCT_PC', 'DODO_PRODUCT_DP_OFFRE', 'DODO_PRODUCT_PC_OFFRE', 'DODO_API_KEY', 'DODO_PRODUCT_LIBRE', 'N8N_EMAIL_WEBHOOK',
             'ADMIN_EMAIL', 'DODO_CHECKOUT_BASE', 'CALL_URL', 'SITE_URL'];
         return json({
             settings: Object.fromEntries(names.map(n => [n, Boolean(env(n))])),
@@ -105,6 +102,9 @@ Deno.serve(async (req) => {
     }
     const db = admin();
 
+    // Ce que le formulaire peut proposer : les trois formules et l'acompte seulement si le montant libre est réglé.
+    if (body.action === 'tarifs') return json({ paiement_libre: paiementLibre(), acompte_cents: ACOMPTE_CENTS });
+
     // Dernier écran atteint : on enregistre le contact (même s'il ne paie pas) et on lance le chrono de l'offre.
     if (body.action === 'offer_start') {
         const email = str(body.email, 200).toLowerCase();
@@ -113,13 +113,20 @@ Deno.serve(async (req) => {
         for (const [k, val] of Object.entries((body.utm ?? {}) as Record<string, unknown>)) {
             if (/^utm_(source|medium|campaign|content|term)$/.test(k)) utm[k] = str(val, 120);
         }
+        const delai = DELAIS.includes(str(body.delai_souhaite)) ? str(body.delai_souhaite) : null;
         await db.from('dossier_clients').upsert({
             email, nom: str(body.nom, 200) || null, entreprise: str(body.entreprise, 200) || null, tel: str(body.tel, 50) || null,
-            updated_at: new Date().toISOString(), ...(Object.keys(utm).length ? { utm } : {}),
+            updated_at: new Date().toISOString(), ...(Object.keys(utm).length ? { utm } : {}), ...(delai ? { delai_souhaite: delai } : {}),
         }, { onConflict: 'email' });
         const o = await offerStatus(db, email, true);
         const t = (str(body.type_dossier) in TYPES ? str(body.type_dossier) : 'dp') as TypeDossier;
-        return json({ ...o, price_cents: TYPES[t].cents, offer_cents: TYPES[t].offerCents, server_now: new Date().toISOString() });
+        const libre = paiementLibre();
+        return json({
+            ...o, price_cents: TYPES[t].cents, offer_cents: TYPES[t].offerCents, server_now: new Date().toISOString(),
+            // Les formules payables : toutes si le montant libre est réglé dans Dodo, sinon Pro seul.
+            paiement_libre: libre, acompte_cents: libre ? ACOMPTE_CENTS : null,
+            prix: Object.fromEntries(Object.entries(PRIX[t]).map(([f, c]) => [f, { cents: c, offre_cents: prixOffre(c), payable: libre || f === 'pro' }])),
+        });
     }
 
     if (body.action === 'create') {
@@ -133,15 +140,19 @@ Deno.serve(async (req) => {
             if (/^utm_(source|medium|campaign|content|term)$/.test(k)) utm[k] = str(val, 120);
         }
         const token = randomToken();
-        const t = TYPES[v.row!.type_dossier as TypeDossier];
         // 2 minutes de marge : le clic a eu lieu à temps, l'envoi des photos peut prendre un moment.
         const offer = await offerStatus(db, String(v.row!.contact_email), false, 120);
         await db.from('dossier_clients').upsert({
             email: v.row!.contact_email, nom: v.row!.contact_nom, entreprise: v.row!.entreprise, tel: v.row!.contact_tel,
             updated_at: new Date().toISOString(),
         }, { onConflict: 'email' });
+        const formule = v.row!.formule as keyof typeof PRIX['dp'];
+        if (!paiementLibre() && (formule !== 'pro' || v.row!.paiement_mode !== 'total')) return json({ error: 'validation', fields: ['formule'] }, 422);
+        const plein = PRIX[v.row!.type_dossier as TypeDossier][formule];
+        const montant = offer.active ? prixOffre(plein) : plein;
         const { data: order, error } = await db.from('orders').insert({
-            ...v.row, montant_ht_cents: offer.active ? t.offerCents : t.cents, offre_10min: offer.active, client_token: token, utm,
+            ...v.row, montant_ht_cents: montant, offre_10min: offer.active, client_token: token, utm,
+            acompte_cents: v.row!.paiement_mode === 'acompte' ? ACOMPTE_CENTS : null,
         }).select('id').single();
         if (error || !order) { console.error(error); return json({ error: 'db' }, 500); }
 
@@ -179,10 +190,12 @@ Deno.serve(async (req) => {
             const { error: e } = await db.from('order_files').insert(rows);
             if (e) { console.error(e); return json({ error: 'db' }, 500); }
         }
-        const t = TYPES[order.type_dossier as TypeDossier];
-        const product = order.offre_10min ? (t.offerProduct() || t.product()) : t.product();
-        const url = checkoutUrl(order, product);
+        const acompte = order.paiement_mode === 'acompte';
+        const url = await creerPaiement(order, acompte ? (order.acompte_cents ?? ACOMPTE_CENTS) : order.montant_ht_cents,
+            acompte ? 'acompte' : 'total', `${SITE_URL}/merci?commande=${order.id}`);
         if (!url) return json({ error: 'paiement_non_configure' }, 503);
+        const t = TYPES[order.type_dossier as TypeDossier];
+        const product = paiementLibre() ? env('DODO_PRODUCT_LIBRE') : (order.offre_10min ? (t.offerProduct() || t.product()) : t.product());
         await db.from('orders').update({ checkout_product: product }).eq('id', order.id);
         return json({ checkout_url: url });
     }

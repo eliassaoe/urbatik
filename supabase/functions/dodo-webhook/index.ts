@@ -65,6 +65,22 @@ Deno.serve(async (req) => {
         return json({ ok: true, warning: 'commande introuvable' });
     }
 
+    // Solde d'une commande payée en partie (parcours LegalPlace, 20 nov. 2026) : le statut ne bouge pas.
+    if (data.metadata?.paiement === 'solde') {
+        const { data: s, error: sErr } = await db.from('orders').update({ solde_paid_at: new Date().toISOString(), solde_payment_id: paymentId })
+            .eq('id', orderId).is('solde_paid_at', null).select('*').maybeSingle();
+        if (sErr) { console.error(sErr); return json({ error: 'db' }, 500); }
+        if (!s) { await record('solde_deja_paye', orderId); return json({ ok: true, duplicate: true }); }
+        const lien = suiviUrl(s.client_token);
+        await sendEmail(s.contact_email, 'Solde reçu, merci', emailShell(`<p>Bonjour ${esc(String(s.contact_nom).split(' ')[0])},</p>
+<p>Nous avons bien reçu le solde de votre dossier pour ${esc(s.ville)}. Votre commande est réglée en totalité.</p>
+<p><a href="${esc(lien)}">Ma page de suivi</a></p>`), `Solde reçu pour votre dossier à ${s.ville}. Votre commande est réglée. Suivi : ${lien}`);
+        await sendEmail(env('ADMIN_EMAIL'), `Solde payé – ${s.entreprise} – ${s.ville}`, emailShell(`<p>Solde reçu (${esc(paymentId)}).</p><p><a href="${esc(`${SITE_URL}/admin/dossiers#${s.id}`)}">Ouvrir le dossier</a></p>`),
+            `Solde reçu pour ${s.entreprise} (${s.ville}).`);
+        await record('solde_paye', orderId);
+        return json({ ok: true });
+    }
+
     // Contrôle : le produit payé correspond-il au type de dossier ?
     const expectedProduct = order.checkout_product || TYPES[order.type_dossier as TypeDossier].product();
     const paidProducts: string[] = (data.product_cart ?? []).map((p: { product_id?: string }) => p.product_id).filter(Boolean);
@@ -95,7 +111,7 @@ Deno.serve(async (req) => {
 
 function recap(o: Record<string, any>): [string, string][] {
     return [
-        ['Type de dossier', TYPES[o.type_dossier as TypeDossier].label],
+        ['Type de dossier', `${TYPES[o.type_dossier as TypeDossier].label} · formule ${({ essentiel: 'Essentiel', pro: 'Pro', premium: 'Premium' } as Record<string, string>)[o.formule] ?? 'Pro'}`],
         ['Adresse du chantier', `${o.adresse_chantier}, ${o.code_postal} ${o.ville}`],
         ["Type d'ouvrage", OUVRAGES[o.type_ouvrage] ?? o.type_ouvrage],
         ...(o.surface_m2 ? [['Dimensions', `${o.dimensions ?? ''} · surface ${o.surface_m2} m² · hauteur ${o.hauteur_m} m`] as [string, string]] : []),
@@ -110,7 +126,7 @@ function emailClient(o: Record<string, any>, missing: string[]): Promise<boolean
         : '<p>Nous avons tout ce qu\'il faut pour commencer.</p>';
     const html = emailShell(`
 <p>Bonjour ${esc(o.contact_nom)},</p>
-<p>Votre commande est confirmée. Merci.</p>
+<p>Votre commande est confirmée. Merci.</p>${o.paiement_mode === 'acompte' ? `<p>Acompte reçu. Le solde (${esc(euros(o.montant_ht_cents - (o.acompte_cents ?? 0)))} HT) se règle à la livraison, depuis votre page de suivi.</p>` : ''}
 <table style="border-collapse:collapse;width:100%;margin:12px 0">${rows.map(([k, v]) =>
         `<tr><td style="padding:6px 8px 6px 0;color:#5b605d;vertical-align:top">${esc(k)}</td><td style="padding:6px 0">${esc(v)}</td></tr>`).join('')}</table>
 <p>Votre dossier arrive en <strong>${DELAI}</strong>. Satisfait ou remboursé pendant 40 jours.</p>
@@ -120,7 +136,8 @@ ${manque}
 <p style="background:#f6f6f7;border-radius:8px;padding:12px"><strong>Aucuns travaux ne doivent commencer avant l'accord de la mairie et l'affichage sur le terrain.</strong></p>
 <p>Ce lien de suivi est personnel : ne le transférez pas.</p>`);
     const text = [
-        `Bonjour ${o.contact_nom},`, '', 'Votre commande est confirmée. Merci.', '',
+        `Bonjour ${o.contact_nom},`, '', 'Votre commande est confirmée. Merci.',
+        ...(o.paiement_mode === 'acompte' ? [`Acompte reçu. Le solde (${euros(o.montant_ht_cents - (o.acompte_cents ?? 0))} HT) se règle à la livraison, depuis votre page de suivi.`] : []), '',
         ...rows.map(([k, v]) => `${k} : ${v}`), '',
         `Votre dossier arrive en ${DELAI}. Satisfait ou remboursé pendant 40 jours.`, '',
         ...(missing.length ? ["Ce qu'il nous manque encore :", ...missing.map(m => `- ${m}`), 'Ajoutez-le depuis votre lien de suivi.'] : ["Nous avons tout ce qu'il faut pour commencer."]),
@@ -134,7 +151,8 @@ ${manque}
 
 function emailAdmin(o: Record<string, any>, alerte: string): Promise<boolean> {
     const lien = `${SITE_URL}/admin/dossiers#${o.id}`;
-    const montant = o.amount_paid_cents ? `${euros(o.amount_paid_cents)} TTC payés (${euros(o.montant_ht_cents)} HT${o.offre_10min ? ', offre 10 min' : ''})` : `${euros(o.montant_ht_cents)} HT`;
+    const montant = (o.amount_paid_cents ? `${euros(o.amount_paid_cents)} TTC payés (${euros(o.montant_ht_cents)} HT${o.offre_10min ? ', offre 10 min' : ''})` : `${euros(o.montant_ht_cents)} HT`)
+        + ` · formule ${o.formule ?? 'pro'}` + (o.paiement_mode === 'acompte' ? ' · ACOMPTE seulement, solde à encaisser à la livraison' : '');
     const rows: [string, string][] = [
         ['Type de dossier', TYPES[o.type_dossier as TypeDossier].label],
         ['Contact', `${o.contact_nom} · ${o.contact_email}`],

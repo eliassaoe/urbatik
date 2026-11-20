@@ -15,7 +15,7 @@
 // ADMIN_SESSION_SECRET : aléatoire, dans dossier_settings ; le changer déconnecte tout le monde.
 // Déployer avec --no-verify-jwt.
 
-import { admin, json, loadSettings, CORS, env, BUCKET, SITE_URL, sendEmail, emailShell, esc, TYPES, TypeDossier, lancerGeneration } from '../_shared/dossier-express.ts';
+import { admin, json, loadSettings, CORS, env, BUCKET, SITE_URL, sendEmail, emailShell, esc, TYPES, TypeDossier, lancerGeneration, euros } from '../_shared/dossier-express.ts';
 
 const STATUSES = ['en_attente_paiement', 'payee', 'en_preparation', 'en_relecture', 'livree', 'deposee', 'a_retravailler', 'accordee', 'refusee', 'annulee', 'remboursee'];
 const DAYS_30 = 30 * 86_400_000;
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
 
     if (body.action === 'list') {
         const { data: orders, error } = await db.from('orders')
-            .select('id, created_at, status, type_dossier, entreprise, ville, code_postal, contact_nom, contact_email, contact_tel, montant_ht_cents, amount_paid_cents, offre_10min, paid_at, utm')
+            .select('id, created_at, status, type_dossier, entreprise, ville, code_postal, contact_nom, contact_email, contact_tel, montant_ht_cents, amount_paid_cents, offre_10min, paid_at, utm, formule, delai_souhaite, paiement_mode, solde_paid_at')
             .order('created_at', { ascending: false }).limit(500);
         if (error) { console.error(error); return json({ error: 'db' }, 500); }
         const ids = (orders ?? []).map(o => o.id);
@@ -121,6 +121,7 @@ Deno.serve(async (req) => {
 <p>Votre ${esc(TYPES[o.type_dossier as TypeDossier].label.toLowerCase())} pour ${esc(o.ville)} est livré. Merci pour votre confiance.</p>
 <p>Votre avis aide d'autres artisans à nous choisir. Ça prend 30 secondes :</p>
 <p><a href="${esc(lien)}" style="display:inline-block;background:#0b0b0c;color:#fff;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600">Donner mon avis</a></p>
+${o.paiement_mode === 'acompte' && !o.solde_paid_at ? `<p><strong>Il reste le solde à régler</strong> (${esc(euros(o.montant_ht_cents - (o.acompte_cents ?? 0)))} HT) : bouton « Régler le solde » sur <a href="${esc(suivi)}">votre page de suivi</a>.</p>` : ''}
 <p><strong>On vous suit jusqu'à l'accord de la mairie.</strong> Sur votre page de suivi, un bouton « La mairie a accepté ? Oui / Non ». Si elle demande une pièce ou refuse, cliquez « Non » : on retravaille le dossier sans frais. <a href="${esc(suivi)}">Ma page de suivi</a></p>`),
                 `Votre dossier est livré. Votre avis en 30 secondes : ${lien}\n\nOn vous suit jusqu'à l'accord de la mairie : si elle demande une pièce ou refuse, cliquez « Non » sur votre page de suivi, on retravaille le dossier sans frais. ${suivi}`);
             if (ok) await db.from('orders').update({ review_requested_at: new Date().toISOString() }).eq('id', o.id);

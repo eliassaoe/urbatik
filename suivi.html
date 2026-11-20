@@ -63,6 +63,12 @@
         <div id="ficheBody"></div>
         <div class="actions"><button class="btn" type="submit" id="ficheSave">Enregistrer la fiche</button><span class="small" id="ficheMsg" aria-live="polite"></span></div>
       </form>
+      <div class="card" id="soldeCard" hidden>
+        <h2>💳 Solde à régler</h2>
+        <p class="muted small" style="margin:-6px 0 12px">Vous avez payé un acompte. Le solde se règle à la livraison du dossier, ou dès maintenant si vous préférez.</p>
+        <button class="btn" type="button" id="soldeBtn"></button>
+        <p class="small" id="soldeMsg" aria-live="polite"></p>
+      </div>
       <div class="card" id="mairieCard" hidden>
         <h2>🏛️ La mairie a accepté ?</h2>
         <p class="muted small" id="mairieTxt" style="margin:-6px 0 10px"></p>
@@ -222,8 +228,10 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
       });
 
       renderMairie(d);
+      $("soldeCard").hidden = !d.solde;
+      if (d.solde) $("soldeBtn").textContent = `Régler le solde : ${d.solde}`;
       const recap = $("recap"); recap.textContent = "";
-      [["Chantier", d.adresse], ["Travaux", d.type_ouvrage], ["Dimensions", d.dimensions], ["Livraison", d.delai]].forEach(([k, v]) => {
+      [["Formule", d.formule || "Pro"], ["Chantier", d.adresse], ["Travaux", d.type_ouvrage], ["Dimensions", d.dimensions], ["Livraison", d.delai]].forEach(([k, v]) => {
         const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v;
         recap.append(dt, dd);
       });
@@ -308,6 +316,11 @@ const STEPS = [["payee", "Commande reçue"], ["en_preparation", "Dossier en pré
       if (er) { Object.keys(er).forEach(k => { const el = document.querySelector(`#ficheBody [data-k="${k}"]`); if (el) el.classList.add("bad"); }); $("ficheMsg").textContent = "Vérifiez les champs en rouge (valeur hors limites)."; }
       else $("ficheMsg").textContent = err && err.data && err.data.error === "verrouille" ? "Le dossier est déjà en relecture : écrivez-nous pour une modification." : "L'enregistrement a échoué. Réessayez.";
     } finally { btn.disabled = false; }
+  });
+  $("soldeBtn").addEventListener("click", async () => {
+    $("soldeBtn").disabled = true; $("soldeMsg").textContent = "Ouverture du paiement sécurisé…";
+    try { const r = await call({ action: "payer_solde" }); track("dossier_express_solde_click"); location.href = r.checkout_url; }
+    catch (e) { $("soldeBtn").disabled = false; $("soldeMsg").textContent = "Le paiement n'a pas pu s'ouvrir. Écrivez-nous sur WhatsApp."; }
   });
   $("extra").addEventListener("change", e => { const f = e.target.files[0]; if (f) upload("complement", f); e.target.value = ""; });
   load();

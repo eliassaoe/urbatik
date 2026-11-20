@@ -100,7 +100,7 @@
             const tr = document.createElement('tr');
             const photos = PHOTOS.filter(k => o.file_kinds.includes(k)).length;
             const cells = [date(o.created_at), `${o.entreprise}\n${o.ville}`, TYPES[o.type_dossier], null, `${photos}/3`,
-                `${euros(o.montant_ht_cents)} HT${o.offre_10min ? ' · offre' : ''}`];
+                `${euros(o.montant_ht_cents)} HT${o.offre_10min ? ' · offre' : ''}\n${({ essentiel: 'Essentiel', pro: 'Pro', premium: 'Premium' })[o.formule] || 'Pro'}${o.paiement_mode === 'acompte' ? (o.solde_paid_at ? ' · soldé' : ' · SOLDE DÛ') : ''}${o.delai_souhaite === 'asap' ? ' · 🚀 urgent' : ''}`];
             cells.forEach((v, i) => {
                 const td = document.createElement('td');
                 if (i === 3) { const p = document.createElement('span'); p.className = 'pill ' + (PILL[o.status] || ''); p.textContent = STATUS[o.status]; td.appendChild(p); }

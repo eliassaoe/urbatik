@@ -66,6 +66,60 @@ export const TYPES: Record<TypeDossier, { label: string; cents: number; offerCen
     a_determiner: { label: 'À déterminer (facturé comme une déclaration préalable)', cents: 24900, offerCents: 17400, product: () => env('DODO_PRODUCT_DP'), offerProduct: () => env('DODO_PRODUCT_DP_OFFRE') },
 };
 
+// Trois formules, comme LegalPlace (20 nov. 2026, docs/parcours-legalplace.md). « pro » est l'offre
+// historique (249 € / 390 €) et la seule payable tant que le paiement à montant libre n'est pas réglé.
+export type Formule = 'essentiel' | 'pro' | 'premium';
+export const FORMULES: Record<Formule, { label: string; inclus: string[] }> = {
+    essentiel: { label: 'Essentiel', inclus: ['Dossier complet : Cerfa, plans, photomontage, notice', 'Livré en 72 h', 'Vous le déposez vous-même en mairie'] },
+    pro: { label: 'Pro', inclus: ['Dossier complet : Cerfa, plans, photomontage, notice', 'Relu par un professionnel avant envoi', "Suivi jusqu'à l'accord de la mairie", 'Garantie anti-refus : on retravaille sans frais'] },
+    premium: { label: 'Premium', inclus: ['Tout ce qui est dans Pro', 'Traitement prioritaire : livré en 48 h', 'Appel de cadrage avec votre conseiller', 'Modifications illimitées jusqu\'à l\'accord'] },
+};
+export const PRIX: Record<TypeDossier, Record<Formule, number>> = {
+    dp: { essentiel: 19900, pro: 24900, premium: 34900 },
+    pc: { essentiel: 32900, pro: 39000, premium: 49000 },
+    a_determiner: { essentiel: 19900, pro: 24900, premium: 34900 },
+};
+// « Payer maintenant » : -30 % pendant l'offre premier dossier (174 € / 273 € en Pro, comme avant).
+export const prixOffre = (cents: number) => Math.round(cents * 0.7 / 100) * 100;
+export const ACOMPTE_CENTS = 4900;
+export const estFormule = (f: unknown): f is Formule => typeof f === 'string' && f in FORMULES;
+
+// Montant libre (formules Essentiel/Premium, acompte, solde) : un produit Dodo « Pay What You Want »
+// (DODO_PRODUCT_LIBRE) et une clé API (DODO_API_KEY, secret Supabase). Sans eux : produits fixes, Pro seul.
+export const paiementLibre = () => !!(env('DODO_API_KEY') && env('DODO_PRODUCT_LIBRE'));
+
+export async function creerPaiement(order: Record<string, any>, cents: number, paiement: 'total' | 'acompte' | 'solde', retour: string): Promise<string | null> {
+    const meta: Record<string, string> = { source: 'dossier_express', order_id: String(order.id), type_dossier: String(order.type_dossier), paiement };
+    if (paiementLibre()) {
+        const base = env('DODO_API_BASE', env('DODO_CHECKOUT_BASE').includes('test.') ? 'https://test.dodopayments.com' : 'https://live.dodopayments.com');
+        const r = await fetch(`${base.replace(/\/$/, '')}/checkouts`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${env('DODO_API_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                product_cart: [{ product_id: env('DODO_PRODUCT_LIBRE'), quantity: 1, amount: cents }],
+                customer: { email: String(order.contact_email), name: String(order.contact_nom) },
+                return_url: retour, metadata: meta,
+            }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.checkout_url) return d.checkout_url;
+        console.error('Dodo checkouts', r.status, JSON.stringify(d).slice(0, 300));
+        return null;
+    }
+    // Repli : liens des produits fixes, seulement pour Pro payé en une fois.
+    if (paiement !== 'total' || (order.formule ?? 'pro') !== 'pro') return null;
+    const t = TYPES[order.type_dossier as TypeDossier];
+    const product = order.offre_10min ? (t.offerProduct() || t.product()) : t.product();
+    if (!product) return null;
+    const u = new URL(env('DODO_CHECKOUT_BASE', 'https://checkout.dodopayments.com/buy/').replace(/\/?$/, '/') + product);
+    u.searchParams.set('quantity', '1');
+    u.searchParams.set('email', String(order.contact_email));
+    u.searchParams.set('fullName', String(order.contact_nom));
+    u.searchParams.set('redirect_url', retour);
+    for (const [k, v] of Object.entries(meta)) u.searchParams.set(`metadata_${k}`, v);
+    return u.toString();
+}
+
 export const OFFER_MINUTES = 10;
 
 // Offre accordée une fois par email, à quelqu'un qui n'a jamais payé, pendant OFFER_MINUTES
