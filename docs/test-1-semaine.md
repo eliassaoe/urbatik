@@ -41,3 +41,18 @@ Abris/studios & constructions bois, Clôturistes & portails. **Façadiers mis en
 restent « en revue », non approuvés (aucun envoi). Studios de jardin : en pause par Explee, 0 envoi.
 Plafonds par campagne au moment du changement : Vérandalistes 12 $, Abris de jardin 5 $, les 4 autres 3 $ (total 29 $/jour).
 Les autres niches viendront en semaine 2.
+
+## Verdict du 22 nov. 2026 (lu automatiquement, 10:00)
+Chiffres du 15 au 22 nov. :
+- **Commandes payées : 0.** Une commande abri de jardin créée le 17/11, jamais payée ; une véranda créée le 20/11, annulée.
+- **Prospects qui ont répondu : 41** (34 réponses Explee + 7 depuis les emails creha). Vérandalistes & Pergolistes 23 ;
+  abris, studios et constructions bois 8 ; piscinistes 5 ; clôturistes 3 ; autres 2.
+- Venus sur le site : 10 personnes (PostHog, utm_campaign=creha). 2 ont ouvert le formulaire, 1 a cliqué « commander »,
+  1 véranda a rempli les 17 étapes sans payer.
+- **Appels qui ont eu lieu : 4** (2 vérandalistes, 1 pisciniste « intéressé, rappelle », 1 abris parti sur le prix du permis à 790 €, baissé à 390 € le soir même).
+  Calendly : pas lu (navigateur non connecté).
+- Dépense Explee : pas lue (navigateur non connecté). Plafond prévu 29 $/jour, soit ~203 $ au plus.
+
+Règle appliquée : 0 commande mais 3 appels ou plus → **le besoin existe, le parcours bloque**.
+Coût réel par commande : pas calculable (0 commande). Coût par prospect qui répond : ~5 $ si le budget a été dépensé en entier.
+Niche gagnante : **Vérandalistes & Pergolistes** (56 % des réponses, la seule qui va jusqu'au bout du formulaire).
