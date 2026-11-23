@@ -56,3 +56,11 @@ Chiffres du 15 au 22 nov. :
 Règle appliquée : 0 commande mais 3 appels ou plus → **le besoin existe, le parcours bloque**.
 Coût réel par commande : pas calculable (0 commande). Coût par prospect qui répond : ~5 $ si le budget a été dépensé en entier.
 Niche gagnante : **Vérandalistes & Pergolistes** (56 % des réponses, la seule qui va jusqu'au bout du formulaire).
+
+## Point du 23 nov. 2026 (soir)
+- **Commandes payées : toujours 0.** Les seules lignes `orders` depuis le 14 nov. sont des tests (« TEST… », « Linkfinder AI ») ; la commande « abri de jardin » du 17/11 citée dans le verdict est la commande de test du générateur (préau, 72700).
+- Explee creha.fr (61157), 7 derniers jours : 4 378 emails, 93 réponses (2,1 %), **14 prospects chauds**, 131 $ dépensés. Depuis le début : 7 944 emails, 37 prospects chauds, 238 $.
+  Par campagne (depuis le début) : Vérandalistes & Pergolistes 22 chauds / 149 $ (≈ 6,8 $ le chaud, réserve de leads presque épuisée : 2 770 / 3 361) ; Abris de jardin 5 / 31 $ ; Piscinistes 4 / 18 $ ; Clôturistes 3 / 20 $ ; Abris & constructions bois 3 / 18 $.
+- Site (PostHog, urbatik.com) : 5 à 16 visiteurs par jour du 14 au 20 nov., puis 3 à 5 par jour depuis le 21 ; 32 visites venues d'Explee (utm_campaign=creha) sur la période, aucune depuis le 19.
+- **Le solde de l'organisation Explee est négatif (≈ -30 $)** : les appels API payants renvoient 402. Les campagnes risquent de s'arrêter d'envoyer jusqu'à la recharge.
+- Accueil changé (demande du gérant) : le titre ne parlait que de la déclaration préalable ; il dit maintenant « Déclaration préalable ou permis de construire », avec les deux prix sous le titre (249 € HT / 390 € HT).
