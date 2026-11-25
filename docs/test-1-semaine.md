@@ -72,3 +72,7 @@ Chiffres lus le 25 nov. (Explee creha.fr 61157, depuis le début) : 9 510 emails
 - **3 prospects ont demandé un appel** : pas d'email, à appeler par le gérant (noms et numéros donnés dans la conversation, pas ici : dépôt public).
 - Le site urbatik.com reste en ligne.
 - **Règle de décision au 25 déc. 2026** : 0 commande payée → on arrête Urbatik pour de bon. 1 commande ou plus → petite campagne sur Vérandalistes & Pergolistes seulement (56 % des réponses).
+
+## Attention aux chiffres PostHog (25 nov. 2026)
+Le navigateur du gérant (Mac, Chrome 138, écran 1440, Stains) était identifié dans PostHog comme un prospect pisciniste depuis le 16 nov. 11:55 : il avait ouvert un lien d'email contenant `e=<email du prospect>`, et le site fait `identify` sur ce paramètre. Résultat : **20 sessions du gérant comptées comme ce prospect** (16 → 25 nov.), dont le clic sur le téléphone du 25 nov. Seule la toute première session (Montesson, Chrome 157, écran 2560) est le vrai prospect.
+Corrigé le 25 nov. : `posthog.reset()` + `opt_out_capturing()` dans le Chrome du gérant sur urbatik.com. Les visites « creha » des rapports précédents peuvent donc contenir des visites du gérant. Règle : ne jamais ouvrir un lien de prospect (avec `e=`) depuis son propre navigateur. Les visites depuis 4.251.36.x (Microsoft) sont le scanner de liens d'Outlook, pas des humains.
