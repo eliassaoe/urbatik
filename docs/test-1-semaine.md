@@ -64,3 +64,11 @@ Niche gagnante : **Vérandalistes & Pergolistes** (56 % des réponses, la seule 
 - Site (PostHog, urbatik.com) : 5 à 16 visiteurs par jour du 14 au 20 nov., puis 3 à 5 par jour depuis le 21 ; 32 visites venues d'Explee (utm_campaign=creha) sur la période, aucune depuis le 19.
 - **Le solde de l'organisation Explee est négatif (≈ -30 $)** : les appels API payants renvoient 402. Les campagnes risquent de s'arrêter d'envoyer jusqu'à la recharge.
 - Accueil changé (demande du gérant) : le titre ne parlait que de la déclaration préalable ; il dit maintenant « Déclaration préalable ou permis de construire », avec les deux prix sous le titre (249 € HT / 390 € HT).
+
+## Décision du 25 nov. 2026 : on arrête de payer, on attend le différé jusqu'au 25 déc.
+Chiffres lus le 25 nov. (Explee creha.fr 61157, depuis le début) : 9 510 emails, 186 réponses, 39 prospects chauds, **380 $ dépensés, 0 commande réelle** (les 9 lignes `orders` sont des tests).
+- **Toutes les campagnes creha.fr en pause** (« Stop campaigns and spending », 25 nov. ~11:20). Plus aucune dépense.
+- **Email « carnet de commandes » envoyé à 18 prospects chauds** (ceux qu'on n'avait pas déjà relancés 3 fois, dernier message de notre part il y a plus de 3 jours) : « un chantier DP/PC dans les 3 prochains mois ? Répondez avec la ville et le type de projet, dossier en 72 h dès 249 € HT ». Signé du même prénom que le fil. Envoyé depuis l'inbox Explee.
+- **3 prospects ont demandé un appel** : pas d'email, à appeler par le gérant (noms et numéros donnés dans la conversation, pas ici : dépôt public).
+- Le site urbatik.com reste en ligne.
+- **Règle de décision au 25 déc. 2026** : 0 commande payée → on arrête Urbatik pour de bon. 1 commande ou plus → petite campagne sur Vérandalistes & Pergolistes seulement (56 % des réponses).
